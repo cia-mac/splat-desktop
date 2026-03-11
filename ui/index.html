@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Splat — by Ciamac</title>
+<meta name="description" content="Real-time video-to-particle renderer by Ciamac Parhizi">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; background: #000; overflow: hidden;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #fff; }
+
+/* ── Canvas ── */
+canvas { display: block; position: fixed; inset: 0; z-index: 1; }
+
+/* ── Upload overlay (centered on viewport) ── */
+#upload-overlay { position: fixed; inset: 0; z-index: 40;
+  display: flex; align-items: center; justify-content: center;
+  pointer-events: none;
+  transition: opacity 0.6s, visibility 0.6s; }
+#upload-overlay.hidden { opacity: 0; visibility: hidden; }
+#upload-inner { pointer-events: auto; text-align: center; padding: 0 32px; }
+
+#upload-area { border: 2px dashed rgba(255,255,255,0.12); border-radius: 14px;
+  padding: 48px 60px; transition: all 0.3s; cursor: pointer; }
+#upload-area.dragover { border-color: rgba(120,180,255,0.5); background: rgba(120,180,255,0.03); }
+#upload-area .upload-icon { font-size: 36px; margin-bottom: 16px; color: rgba(255,255,255,0.15); }
+#upload-area .upload-label { font: 600 14px/1 'Helvetica Neue', Helvetica, sans-serif;
+  letter-spacing: 3px; text-transform: uppercase; color: rgba(120,180,255,0.8); margin-bottom: 12px; }
+#upload-area .upload-hint { font-size: 11px; color: rgba(255,255,255,0.2); }
+#file-input { display: none; }
+
+/* ── Controls panel (right side, visible from start) ── */
+#controls { position: fixed; top: 0; right: 0; width: 338px; height: 100%;
+  background: rgba(10,10,10,0.45); backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-left: 1px solid rgba(120,180,255,0.08); z-index: 50;
+  transform: translateX(0); transition: transform 0.35s ease;
+  overflow-y: auto; }
+#controls.closed { transform: translateX(338px); }
+
+/* Toggle arrow */
+#ctrl-toggle { position: fixed; top: 50%; right: 338px; z-index: 51;
+  transform: translateY(-50%); width: 42px; height: 104px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: all 0.35s ease; }
+#controls.closed ~ #ctrl-toggle { right: 0; }
+#ctrl-toggle .arrow { width: 0; height: 0; border-top: 12px solid transparent;
+  border-bottom: 12px solid transparent;
+  border-left: 15px solid rgba(120,180,255,0.5);
+  transition: all 0.3s; }
+#controls:not(.closed) ~ #ctrl-toggle .arrow { border-left: none;
+  border-right: 15px solid rgba(120,180,255,0.5); }
+#ctrl-toggle:hover .arrow { border-left-color: rgba(120,180,255,0.9); border-right-color: rgba(120,180,255,0.9); }
+
+#controls-header { padding: 26px 23px 16px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+#controls-header h2 { font-size: 17px; letter-spacing: 5px; text-transform: uppercase;
+  color: rgba(120,180,255,0.7); font-weight: 600; }
+#controls-body { padding: 21px 23px; }
+.ctrl-section { margin-bottom: 23px; }
+.ctrl-section h3 { font-size: 14px; letter-spacing: 4px; text-transform: uppercase;
+  color: rgba(120,180,255,0.5); margin-bottom: 13px; font-weight: 600; }
+.ctrl-row { margin-bottom: 16px; display: flex; flex-wrap: wrap; align-items: center; }
+.ctrl-row label { font-size: 17px; color: rgba(255,255,255,0.7); flex: 1; font-weight: 300; }
+.ctrl-row .ctrl-val { font: 600 17px/1 monospace; color: rgba(120,180,255,0.75); min-width: 57px;
+  text-align: right; }
+.ctrl-row input[type="range"] { width: 100%; margin-top: 7px; accent-color: rgba(120,180,255,0.8);
+  height: 4px; -webkit-appearance: none; appearance: none; background: rgba(255,255,255,0.08);
+  border-radius: 2px; outline: none; }
+.ctrl-row input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px;
+  border-radius: 50%; background: rgba(120,180,255,0.85); cursor: pointer;
+  box-shadow: 0 0 8px rgba(120,180,255,0.3); }
+
+/* Presets */
+.presets { display: flex; gap: 8px; margin-bottom: 18px; }
+.presets button { flex: 1; padding: 9px 0; font: 600 17px/1 monospace; letter-spacing: 1px;
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px; color: rgba(255,255,255,0.6); cursor: pointer; transition: all 0.2s; }
+.presets button:hover { border-color: rgba(120,180,255,0.35); color: rgba(120,180,255,0.7); }
+.presets button.active { border-color: rgba(120,180,255,0.5); color: rgba(120,180,255,0.85);
+  background: rgba(120,180,255,0.05); }
+
+/* Record */
+#record-section { padding-top: 18px; border-top: 1px solid rgba(255,255,255,0.05); }
+#record-btn { width: 100%; padding: 13px 0; font: 600 19px/1 monospace; letter-spacing: 2px;
+  text-transform: uppercase; background: rgba(255,60,60,0.06);
+  border: 1px solid rgba(255,60,60,0.2); border-radius: 8px;
+  color: rgba(255,100,100,0.7); cursor: pointer; transition: all 0.2s; }
+#record-btn:hover { border-color: rgba(255,60,60,0.5); color: rgba(255,80,80,0.9); }
+#record-btn.recording { border-color: rgba(255,60,60,0.7); color: #ff5050;
+  animation: pulse 1.5s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.6; } }
+#full-loop-row { margin-top: 10px; display: flex; align-items: center; gap: 10px; }
+#full-loop-row label { font-size: 16px; color: rgba(255,255,255,0.5); cursor: pointer; }
+#full-loop-row input { accent-color: rgba(120,180,255,0.8); }
+
+/* New video */
+#new-video { margin-top: 18px; width: 100%; padding: 10px 0; font: 16px/1 monospace;
+  letter-spacing: 1px; background: none; border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 5px; color: rgba(255,255,255,0.45); cursor: pointer; transition: all 0.2s; }
+#new-video:hover { border-color: rgba(255,255,255,0.15); color: rgba(255,255,255,0.5); }
+
+/* ── Status bar ── */
+#status { position: fixed; bottom: 16px; left: 18px; z-index: 10;
+  color: rgba(120,180,255,0.45); font: 16px/1.5 monospace; visibility: hidden; }
+#status span { margin-right: 18px; }
+
+</style>
+</head>
+<body>
+
+<!-- Upload overlay (centered on canvas) -->
+<div id="upload-overlay">
+  <div id="upload-inner">
+    <div id="upload-area">
+      <div class="upload-icon">&#9654;</div>
+      <div class="upload-label">upload video</div>
+      <div class="upload-hint">drag & drop or click — mp4, webm, mov</div>
+      <input type="file" id="file-input" accept="video/*">
+    </div>
+  </div>
+</div>
+
+<!-- Controls panel (visible from start) -->
+<div id="controls">
+  <div id="controls-header"><h2>splat</h2><span style="font-size:10px;opacity:0.4;margin-top:2px;display:block">by ciamac</span></div>
+  <div id="controls-body"></div>
+</div>
+<div id="ctrl-toggle"><div class="arrow"></div></div>
+
+<!-- Status bar -->
+<div id="status">
+  <span id="fps-display">-- fps</span>
+  <span id="particle-count">--</span>
+</div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js';
+
+/* ═══════════════ CONFIG ═══════════════ */
+let COLS = 417, ROWS = 235, PER_CLUSTER = 7;
+const CLUSTER_SPREAD = 4.0;
+let SIZE_MIN = 1.7, SIZE_MAX = 5.4, SIZE_POW = 2.4;
+let OPACITY = 0.55, BRIGHTNESS = 2.4;
+let TURB_AMP = 2.0;
+const TURB_SPEED = 0.5, TURB_OCTAVES = 3;
+let MOUSE_RADIUS = 278, MOUSE_PUSH = 29;
+const ATTRACT_STRENGTH = 30, SWIRL_STRENGTH = 25, SWIRL_INWARD = 6;
+const RETURN_SPEED = 1.2, WAKE_RETURN = 0.35, WAKE_THRESHOLD = 3;
+const SEED = 42;
+
+/* ═══════════════ STATE ═══════════════ */
+let vidW = 0, vidH = 0;
+let N = 0, geom, points, mat, videoTex;
+let baseX, baseY, pos, uv, size, phaseX, phaseY, mOffX, mOffY;
+let video, renderer, camera, scene, clock;
+let running = false;
+
+/* ═══════════════ RNG ═══════════════ */
+function mulberry32(a) {
+  return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
+
+/* Clean src param from URL if present */
+if (new URLSearchParams(location.search).has('src'))
+  history.replaceState(null, '', location.pathname);
+
+/* Upload area click → file dialog */
+document.getElementById('upload-area').addEventListener('click', () => {
+  document.getElementById('file-input').click();
+});
+
+/* ═══════════════ CONTROLS TOGGLE ═══════════════ */
+const ctrlToggle = document.getElementById('ctrl-toggle');
+const ctrlPanel = document.getElementById('controls');
+ctrlToggle.addEventListener('click', () => { ctrlPanel.classList.toggle('closed'); });
+
+/* ═══════════════ VIDEO UPLOAD ═══════════════ */
+const uploadOverlay = document.getElementById('upload-overlay');
+const uploadArea = document.getElementById('upload-area');
+const fileInput = document.getElementById('file-input');
+
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
+uploadArea.addEventListener('drop', e => {
+  e.preventDefault(); uploadArea.classList.remove('dragover');
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+/* Also allow dropping anywhere on viewport */
+document.body.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('dragover'); });
+document.body.addEventListener('drop', e => {
+  e.preventDefault(); uploadArea.classList.remove('dragover');
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
+
+function handleFile(file) {
+  if (!file.type.startsWith('video/')) { alert('Not a video file'); return; }
+  if (file.size > 500 * 1024 * 1024) {
+    if (!confirm('This file is over 500 MB. Performance may suffer. Continue?')) return;
+  }
+  const url = URL.createObjectURL(file);
+  const v = document.createElement('video');
+  v.src = url; v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto';
+  v.crossOrigin = 'anonymous';
+  v.addEventListener('loadedmetadata', () => {
+    vidW = v.videoWidth; vidH = v.videoHeight;
+    /* Warn for very large videos */
+    if (vidW > 3840 || vidH > 2160) {
+      if (!confirm(`Video is ${vidW}x${vidH}. This may be slow. For best results use 1080p. Continue?`)) {
+        URL.revokeObjectURL(url); return;
+      }
+    }
+    initApp(v);
+  });
+  v.addEventListener('error', () => { alert('Could not decode video. Try a different format.'); URL.revokeObjectURL(url); });
+}
+
+/* ═══════════════ INIT APP ═══════════════ */
+function initApp(v) {
+  if (running) {
+    if (geom) { geom.dispose(); scene.remove(points); }
+    if (mat) mat.dispose();
+    if (videoTex) videoTex.dispose();
+    if (video) { video.pause(); URL.revokeObjectURL(video.src); }
+    renderer.dispose();
+  }
+
+  video = v;
+  video.play();
+
+  uploadOverlay.classList.add('hidden');
+  document.getElementById('status').style.visibility = 'visible';
+
+  renderer = new THREE.WebGLRenderer({
+    antialias: false, alpha: true, premultipliedAlpha: true,
+    preserveDrawingBuffer: true, powerPreference: 'high-performance'
+  });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setClearColor(0x000000, 0);
+  document.body.appendChild(renderer.domElement);
+
+  scene = new THREE.Scene();
+  clock = new THREE.Clock();
+  makeCamera();
+
+  videoTex = new THREE.VideoTexture(video);
+  videoTex.minFilter = THREE.LinearFilter;
+  videoTex.magFilter = THREE.LinearFilter;
+  videoTex.colorSpace = THREE.SRGBColorSpace;
+
+  mat = new THREE.ShaderMaterial({
+    vertexShader: `
+      precision highp float;
+      attribute vec2 aUV;
+      attribute float aSize;
+      uniform float uPixelRatio;
+      uniform float uBrightness;
+      varying vec2 vUV;
+      varying float vBright;
+      void main() {
+        vUV = aUV;
+        vec3 pos = position;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+        gl_PointSize = aSize * uPixelRatio;
+        vBright = uBrightness;
+      }`,
+    fragmentShader: `
+      precision mediump float;
+      uniform sampler2D uVideo;
+      uniform float uOpacity;
+      uniform float uGaussExp;
+      varying vec2 vUV;
+      varying float vBright;
+      void main() {
+        vec2 d = gl_PointCoord - 0.5;
+        float r2 = dot(d, d) * 4.0;
+        float alpha = exp(-r2 * uGaussExp) * uOpacity;
+        if (alpha < 0.005) discard;
+        vec3 col = texture2D(uVideo, vUV).rgb;
+        gl_FragColor = vec4(col * vBright * alpha, alpha);
+      }`,
+    uniforms: {
+      uVideo: { value: videoTex }, uOpacity: { value: OPACITY },
+      uBrightness: { value: BRIGHTNESS }, uGaussExp: { value: 5.0 },
+      uPixelRatio: { value: Math.min(devicePixelRatio, 2) },
+    },
+    transparent: true, depthWrite: false, blending: THREE.CustomBlending,
+    blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor, blendEquation: THREE.AddEquation,
+  });
+
+  buildParticles();
+  buildControls();
+  running = true;
+  tick();
+}
+
+/* ═══════════════ CAMERA ═══════════════ */
+function makeCamera() {
+  const sa = innerWidth / innerHeight, va = vidW / vidH;
+  let l, r, t, b;
+  if (sa > va) { const h = vidW / sa, p = (vidH - h) / 2; l = 0; r = vidW; b = p; t = vidH - p; }
+  else { const w = vidH * sa, p = (vidW - w) / 2; l = p; r = vidW - p; b = 0; t = vidH; }
+  camera = new THREE.OrthographicCamera(l, r, t, b, -1, 1);
+}
+
+/* ═══════════════ BUILD PARTICLES ═══════════════ */
+function buildParticles() {
+  if (geom) { geom.dispose(); scene.remove(points); }
+  N = COLS * ROWS * PER_CLUSTER;
+  const rng = mulberry32(SEED);
+
+  baseX = new Float32Array(N); baseY = new Float32Array(N);
+  pos = new Float32Array(N * 3); uv = new Float32Array(N * 2); size = new Float32Array(N);
+  phaseX = new Float32Array(N); phaseY = new Float32Array(N);
+  mOffX = new Float32Array(N); mOffY = new Float32Array(N);
+
+  const MARGIN = 30;
+  const cellW = (vidW + 2 * MARGIN) / COLS, cellH = (vidH + 2 * MARGIN) / ROWS;
+  let idx = 0;
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const cx = -MARGIN + (c + 0.5) * cellW, cy = -MARGIN + (r + 0.5) * cellH;
+      const uvx = Math.max(0, Math.min(1, cx / vidW));
+      const uvy = Math.max(0, Math.min(1, cy / vidH));
+      for (let k = 0; k < PER_CLUSTER; k++) {
+        const a = rng() * Math.PI * 2, d = rng() * CLUSTER_SPREAD;
+        baseX[idx] = cx + Math.cos(a) * d; baseY[idx] = cy + Math.sin(a) * d;
+        uv[idx * 2] = uvx; uv[idx * 2 + 1] = 1.0 - uvy;
+        size[idx] = SIZE_MIN + (SIZE_MAX - SIZE_MIN) * Math.pow(rng(), SIZE_POW);
+        phaseX[idx] = rng() * Math.PI * 2; phaseY[idx] = rng() * Math.PI * 2;
+        rng(); rng();
+        pos[idx * 3] = baseX[idx]; pos[idx * 3 + 1] = vidH - baseY[idx]; pos[idx * 3 + 2] = 0;
+        idx++;
+      }
+    }
+  }
+
+  geom = new THREE.BufferGeometry();
+  const posAttr = new THREE.BufferAttribute(pos, 3);
+  posAttr.usage = THREE.DynamicDrawUsage;
+  geom.setAttribute('position', posAttr);
+  geom.setAttribute('aUV', new THREE.BufferAttribute(uv, 2));
+  geom.setAttribute('aSize', new THREE.BufferAttribute(size, 1));
+  points = new THREE.Points(geom, mat);
+  scene.add(points);
+
+  document.getElementById('particle-count').textContent = N.toLocaleString() + ' particles';
+}
+
+/* ═══════════════ MOUSE ═══════════════ */
+const mouse = { x: -9999, y: -9999, active: false, left: false, right: false };
+function screenToWorld(sx, sy) {
+  const sa = innerWidth / innerHeight, va = vidW / vidH;
+  if (sa > va) { const h = vidW / sa, p = (vidH - h) / 2; return { x: sx / innerWidth * vidW, y: p + sy / innerHeight * h }; }
+  const w = vidH * sa, p = (vidW - w) / 2; return { x: p + sx / innerWidth * w, y: sy / innerHeight * vidH };
+}
+addEventListener('mousemove', e => { if (!running) return; const w = screenToWorld(e.clientX, e.clientY); mouse.x = w.x; mouse.y = w.y; mouse.active = true; });
+addEventListener('mouseleave', () => { mouse.active = false; });
+addEventListener('mousedown', e => { if (e.button === 0) mouse.left = true; if (e.button === 2) mouse.right = true; });
+addEventListener('mouseup', e => { if (e.button === 0) mouse.left = false; if (e.button === 2) mouse.right = false; });
+addEventListener('contextmenu', e => { if (running) e.preventDefault(); });
+
+function applyMouse(i, curX, curY, dt) {
+  if (!mouse.active) return;
+  const ddx = curX + mOffX[i] - mouse.x, ddy = curY + mOffY[i] - mouse.y;
+  const dist = Math.sqrt(ddx * ddx + ddy * ddy);
+  if (dist >= MOUSE_RADIUS || dist < 0.5) return;
+  const nx = ddx / dist, ny = ddy / dist, fo = 1 - dist / MOUSE_RADIUS;
+  if (mouse.right) { const f = fo * ATTRACT_STRENGTH * dt * 4; mOffX[i] -= nx * f; mOffY[i] -= ny * f; }
+  else if (mouse.left) { const f = fo * MOUSE_PUSH * dt * 4; mOffX[i] += nx * f; mOffY[i] += ny * f; }
+  else { const sf = fo * SWIRL_STRENGTH * dt * 4, inf = fo * SWIRL_INWARD * dt * 4; mOffX[i] += -ny * sf - nx * inf; mOffY[i] += nx * sf - ny * inf; }
+}
+function applyWake(i, dt) {
+  const disp = Math.sqrt(mOffX[i] * mOffX[i] + mOffY[i] * mOffY[i]);
+  const decay = Math.exp(-(disp > WAKE_THRESHOLD ? WAKE_RETURN : RETURN_SPEED) * dt);
+  mOffX[i] *= decay; mOffY[i] *= decay;
+}
+
+/* ═══════════════ TICK ═══════════════ */
+let frames = 0, fpsT = 0;
+const fpsEl = document.getElementById('fps-display');
+
+function tick() {
+  if (!running) return;
+  requestAnimationFrame(tick);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  const t = clock.getElapsedTime();
+
+  mat.uniforms.uBrightness.value = BRIGHTNESS;
+  mat.uniforms.uOpacity.value = OPACITY;
+
+  const posAttr = geom.getAttribute('position');
+  const arr = posAttr.array;
+  for (let i = 0; i < N; i++) {
+    const hx = baseX[i], hy = baseY[i], hoy = vidH - hy;
+    let dx = 0, dy = 0;
+    for (let o = 0; o < TURB_OCTAVES; o++) {
+      const freq = (o + 1) * 0.7, amp = TURB_AMP / (o + 1), tt = t * TURB_SPEED * (o + 1);
+      dx += amp * Math.sin(freq * hx * 0.01 + tt + phaseX[i]);
+      dy += amp * Math.sin(freq * hy * 0.01 + tt * 1.3 + phaseY[i]);
+    }
+    applyMouse(i, hx, hy, dt); applyWake(i, dt);
+    arr[i * 3] = hx + dx + mOffX[i]; arr[i * 3 + 1] = hoy - dy - mOffY[i];
+  }
+  posAttr.needsUpdate = true;
+  renderer.render(scene, camera);
+
+  frames++; fpsT += dt;
+  if (fpsT >= 0.5) { fpsEl.textContent = Math.round(frames / fpsT) + ' fps'; frames = 0; fpsT = 0; }
+}
+
+/* ═══════════════ RESIZE ═══════════════ */
+addEventListener('resize', () => { if (!running) return; renderer.setSize(innerWidth, innerHeight); makeCamera(); });
+
+/* ═══════════════ CONTROLS ═══════════════ */
+let rebuildTimer = null;
+function scheduleRebuild() { clearTimeout(rebuildTimer); rebuildTimer = setTimeout(() => buildParticles(), 300); }
+
+function computeGrid(target) {
+  const aspect = (vidW && vidH) ? vidW / vidH : 16 / 9;
+  const cells = target / PER_CLUSTER;
+  const rows = Math.max(10, Math.round(Math.sqrt(cells / aspect)));
+  return { cols: Math.max(10, Math.round(rows * aspect)), rows };
+}
+
+function buildControls() {
+  const body = document.getElementById('controls-body');
+  body.innerHTML = '';
+  const hasVideo = vidW > 0;
+
+  /* Presets */
+  const preDiv = document.createElement('div'); preDiv.className = 'presets';
+  const presets = [{ label: 'light', count: 200000 }, { label: 'standard', count: 686000 }, { label: 'dense', count: 1200000 }];
+  let densitySlider, densityVal;
+
+  presets.forEach(p => {
+    const btn = document.createElement('button'); btn.textContent = p.label;
+    if (p.label === 'standard') btn.classList.add('active');
+    btn.addEventListener('click', () => {
+      const g = computeGrid(p.count); COLS = g.cols; ROWS = g.rows;
+      densitySlider.value = p.count; densityVal.textContent = (p.count / 1000).toFixed(0) + 'k';
+      preDiv.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active'); scheduleRebuild();
+    });
+    preDiv.appendChild(btn);
+  });
+  body.appendChild(preDiv);
+
+  function addSection(title) {
+    const s = document.createElement('div'); s.className = 'ctrl-section';
+    const h = document.createElement('h3'); h.textContent = title; s.appendChild(h);
+    body.appendChild(s); return s;
+  }
+  function addSlider(sec, label, min, max, step, val, fmt, fn) {
+    const row = document.createElement('div'); row.className = 'ctrl-row';
+    const lbl = document.createElement('label'); lbl.textContent = label;
+    const v = document.createElement('span'); v.className = 'ctrl-val'; v.textContent = fmt(val);
+    const sl = document.createElement('input');
+    sl.type = 'range'; sl.min = min; sl.max = max; sl.step = step; sl.value = val;
+    sl.addEventListener('input', () => { v.textContent = fmt(parseFloat(sl.value)); fn(parseFloat(sl.value)); });
+    row.append(lbl, v); row.appendChild(sl); sec.appendChild(row);
+    return { slider: sl, valEl: v };
+  }
+
+  const pSec = addSection('particles');
+  const dr = addSlider(pSec, 'density', 10000, 1000000, 10000, COLS * ROWS * PER_CLUSTER,
+    v => (v/1000).toFixed(0)+'k', v => { const g = computeGrid(v); COLS = g.cols; ROWS = g.rows; scheduleRebuild(); });
+  densitySlider = dr.slider; densityVal = dr.valEl;
+  addSlider(pSec, 'per cell', 1, 8, 1, PER_CLUSTER, v => v.toFixed(0), v => { PER_CLUSTER = v; scheduleRebuild(); });
+
+  const sSec = addSection('size');
+  addSlider(sSec, 'min size', 0.1, 3.0, 0.1, SIZE_MIN, v => v.toFixed(1), v => { SIZE_MIN = v; scheduleRebuild(); });
+  addSlider(sSec, 'max size', 0.5, 8.0, 0.1, SIZE_MAX, v => v.toFixed(1), v => { SIZE_MAX = v; scheduleRebuild(); });
+
+  const aSec = addSection('appearance');
+  addSlider(aSec, 'brightness', 0.5, 5.0, 0.1, BRIGHTNESS, v => v.toFixed(1), v => { BRIGHTNESS = v; });
+  addSlider(aSec, 'opacity', 0.1, 1.0, 0.05, OPACITY, v => v.toFixed(2), v => { OPACITY = v; });
+  addSlider(aSec, 'turbulence', 0, 20, 0.5, TURB_AMP, v => v.toFixed(1), v => { TURB_AMP = v; });
+
+  const mSec = addSection('mouse');
+  addSlider(mSec, 'radius', 50, 500, 10, MOUSE_RADIUS, v => v.toFixed(0), v => { MOUSE_RADIUS = v; });
+  addSlider(mSec, 'push force', 5, 100, 1, MOUSE_PUSH, v => v.toFixed(0), v => { MOUSE_PUSH = v; });
+
+  if (hasVideo) {
+    /* Record */
+    const recSec = document.createElement('div'); recSec.id = 'record-section';
+    const recBtn = document.createElement('button'); recBtn.id = 'record-btn'; recBtn.textContent = 'record';
+    recBtn.addEventListener('click', toggleRecord); recSec.appendChild(recBtn);
+    const loopRow = document.createElement('div'); loopRow.id = 'full-loop-row';
+    const loopCb = document.createElement('input'); loopCb.type = 'checkbox'; loopCb.id = 'full-loop';
+    const loopLbl = document.createElement('label'); loopLbl.htmlFor = 'full-loop'; loopLbl.textContent = 'record full loop';
+    loopRow.append(loopCb, loopLbl); recSec.appendChild(loopRow); body.appendChild(recSec);
+
+    const newBtn = document.createElement('button'); newBtn.id = 'new-video'; newBtn.textContent = 'new video';
+    newBtn.addEventListener('click', resetToUpload); body.appendChild(newBtn);
+  }
+}
+
+/* ═══════════════ RECORD ═══════════════ */
+let mediaRecorder = null, recordedChunks = [];
+
+function toggleRecord() {
+  if (mediaRecorder && mediaRecorder.state === 'recording') { stopRecord(); return; }
+  startRecord();
+}
+function startRecord() {
+  const stream = renderer.domElement.captureStream(30);
+  /* Prefer H.265 MP4, fall back to H.264 MP4, then VP9 WebM */
+  const types = [
+    'video/mp4;codecs=hvc1',   /* H.265 / HEVC */
+    'video/mp4;codecs=avc1',   /* H.264 / AVC  */
+    'video/webm;codecs=vp9',
+    'video/webm'
+  ];
+  let mime = types.find(t => MediaRecorder.isTypeSupported(t)) || '';
+  const opts = { videoBitsPerSecond: 12000000 }; if (mime) opts.mimeType = mime;
+  const ext = mime.startsWith('video/mp4') ? 'mp4' : 'webm';
+  mediaRecorder = new MediaRecorder(stream, opts);
+  recordedChunks = [];
+  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+  mediaRecorder.onstop = () => {
+    const blob = new Blob(recordedChunks, { type: mime || 'video/mp4' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = `splat.${ext}`; a.click();
+    URL.revokeObjectURL(url);
+  };
+  if (document.getElementById('full-loop').checked) {
+    video.currentTime = 0; let prev = 0;
+    const check = () => {
+      if (!mediaRecorder || mediaRecorder.state !== 'recording') return;
+      if (video.currentTime < prev && prev > 1) { stopRecord(); return; }
+      prev = video.currentTime; requestAnimationFrame(check);
+    };
+    requestAnimationFrame(check);
+  }
+  mediaRecorder.start();
+  document.getElementById('record-btn').textContent = 'stop';
+  document.getElementById('record-btn').classList.add('recording');
+}
+function stopRecord() {
+  if (mediaRecorder && mediaRecorder.state === 'recording') mediaRecorder.stop();
+  document.getElementById('record-btn').textContent = 'record';
+  document.getElementById('record-btn').classList.remove('recording');
+}
+
+/* ═══════════════ NEW VIDEO ═══════════════ */
+function resetToUpload() {
+  running = false;
+  if (mediaRecorder && mediaRecorder.state === 'recording') stopRecord();
+  if (geom) { geom.dispose(); scene.remove(points); }
+  if (mat) mat.dispose(); if (videoTex) videoTex.dispose();
+  if (video) { video.pause(); URL.revokeObjectURL(video.src); }
+  if (renderer) { renderer.domElement.remove(); renderer.dispose(); }
+  uploadOverlay.classList.remove('hidden');
+  document.getElementById('status').style.visibility = 'hidden';
+  vidW = 0; vidH = 0;
+  buildControls();
+  fileInput.value = '';
+}
+
+/* ═══════════════ INIT CONTROLS ON LOAD ═══════════════ */
+buildControls();
+
+</script>
+</body>
+</html>

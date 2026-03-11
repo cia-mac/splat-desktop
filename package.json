@@ -1,0 +1,11 @@
+{
+  "name": "splat",
+  "version": "1.0.0",
+  "description": "Real-time video-to-particle renderer by Ciamac",
+  "private": true,
+  "scripts": {
+    "tauri": "cargo tauri",
+    "tauri:dev": "cargo tauri dev",
+    "tauri:build": "cargo tauri build"
+  }
+}
