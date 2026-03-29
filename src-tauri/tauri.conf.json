@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/crates/tauri-config-schema/schema.json",
-  "productName": "Splat",
+  "productName": "Gsplat",
   "version": "1.0.0",
   "identifier": "com.ciamac.splat",
   "build": {
@@ -9,7 +9,7 @@
   "app": {
     "windows": [
       {
-        "title": "Splat — by Ciamac",
+        "title": "Gsplat — by Ciamac",
         "width": 1280,
         "height": 800,
         "resizable": true,
