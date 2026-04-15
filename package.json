@@ -1,11 +1,15 @@
 {
-  "name": "gsplat",
-  "version": "1.0.0",
+  "name": "ciafx",
+  "version": "2.0.0",
   "description": "Real-time video-to-particle renderer by Ciamac",
   "private": true,
   "scripts": {
     "tauri": "cargo tauri",
     "tauri:dev": "cargo tauri dev",
     "tauri:build": "cargo tauri build"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.10.1",
+    "@tauri-apps/plugin-dialog": "^2.7.0"
   }
 }
