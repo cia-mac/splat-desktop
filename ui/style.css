@@ -135,7 +135,7 @@ canvas { display: block; position: fixed; inset: 0; z-index: 1; }
   border-bottom: 1px solid rgba(255, 255, 255, 0.03);
 }
 #controls-header h2 {
-  font-size: 18px; letter-spacing: 3px; text-transform: lowercase;
+  font-size: 18px; letter-spacing: 3px;
   color: var(--text-primary); font-weight: 500;
 }
 #controls-header .subtitle {
