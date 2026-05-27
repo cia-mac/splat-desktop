@@ -120,10 +120,27 @@ const fileInput = document.getElementById('file-input');
 const ctrlToggle = document.getElementById('ctrl-toggle');
 const ctrlPanel = document.getElementById('controls');
 
+/* ═══════════════ VIEWPORT ═══════════════ */
+// Panel width (matches #controls width in style.css). When the panel is open
+// it overlays the right edge of the canvas; the visible drawing area is the
+// window width minus the panel width.
+const PANEL_W = 320;
+function visibleSize() {
+  const panelOpen = !ctrlPanel.classList.contains('closed');
+  return { width: innerWidth - (panelOpen ? PANEL_W : 0), height: innerHeight };
+}
+function resizeRenderSurface() {
+  if (!running || !renderer) return;
+  const sz = visibleSize();
+  renderer.setSize(sz.width, sz.height);
+  makeCamera();
+}
+
 /* ═══════════════ CONTROLS TOGGLE ═══════════════ */
 function togglePanel() {
   ctrlPanel.classList.toggle('closed');
   uploadOverlay.classList.toggle('panel-closed', ctrlPanel.classList.contains('closed'));
+  resizeRenderSurface();
 }
 ctrlToggle.addEventListener('click', togglePanel);
 
@@ -186,7 +203,8 @@ function initApp(v) {
     preserveDrawingBuffer: false, powerPreference: 'high-performance'
   });
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  renderer.setSize(innerWidth, innerHeight);
+  const initSz = visibleSize();
+  renderer.setSize(initSz.width, initSz.height);
   renderer.setClearColor(0x000000, 0);
   document.body.appendChild(renderer.domElement);
 
@@ -227,15 +245,20 @@ function initApp(v) {
 }
 
 /* ═══════════════ CAMERA ═══════════════ */
+// Orthographic fit-to-video. The canvas aspect comes from the *visible* draw
+// surface (window minus controls panel), not the full window. Letterboxes
+// (horizontal bars) when canvas is taller than the video; pillarboxes
+// (vertical bars) when wider. Never stretches.
 function makeCamera() {
-  const sa = innerWidth / innerHeight, va = vidW / vidH;
+  const sz = visibleSize();
+  const sa = sz.width / sz.height, va = vidW / vidH;
   let l, r, t, b;
   if (sa > va) {
-    const h = vidW / sa, p = (vidH - h) / 2;
-    l = 0; r = vidW; b = p; t = vidH - p;
+    const w = vidH * sa, p = (w - vidW) / 2;
+    l = -p; r = vidW + p; b = 0; t = vidH;
   } else {
-    const w = vidH * sa, p = (vidW - w) / 2;
-    l = p; r = vidW - p; b = 0; t = vidH;
+    const h = vidW / sa, p = (h - vidH) / 2;
+    l = 0; r = vidW; b = -p; t = vidH + p;
   }
   camera = new THREE.OrthographicCamera(l, r, t, b, -1, 1);
 }
@@ -307,13 +330,17 @@ function buildParticles() {
 const mouse = { x: -9999, y: -9999, active: false, left: false, right: false };
 
 function screenToWorld(sx, sy) {
-  const sa = innerWidth / innerHeight, va = vidW / vidH;
+  // Map screen coords (relative to window origin) into the orthographic world.
+  // Match the same letterbox/pillarbox math used in makeCamera so mouse forces
+  // land where the user sees them.
+  const sz = visibleSize();
+  const sa = sz.width / sz.height, va = vidW / vidH;
   if (sa > va) {
-    const h = vidW / sa, p = (vidH - h) / 2;
-    return { x: sx / innerWidth * vidW, y: p + sy / innerHeight * h };
+    const w = vidH * sa, p = (w - vidW) / 2;
+    return { x: -p + sx / sz.width * w, y: sy / sz.height * vidH };
   }
-  const w = vidH * sa, p = (vidW - w) / 2;
-  return { x: p + sx / innerWidth * w, y: sy / innerHeight * vidH };
+  const h = vidW / sa, p = (h - vidH) / 2;
+  return { x: sx / sz.width * vidW, y: -p + sy / sz.height * h };
 }
 
 addEventListener('mousemove', e => {
@@ -406,9 +433,7 @@ function tick() {
 
 /* ═══════════════ RESIZE ═══════════════ */
 addEventListener('resize', () => {
-  if (!running) return;
-  renderer.setSize(innerWidth, innerHeight);
-  makeCamera();
+  resizeRenderSurface();
 });
 
 /* ═══════════════ KEYBOARD ═══════════════ */
