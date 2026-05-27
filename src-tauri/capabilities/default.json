@@ -1,6 +1,6 @@
 {
   "identifier": "default",
-  "description": "Default capabilities for ciafx",
+  "description": "Default capabilities for PixelCluster",
   "windows": ["main"],
   "permissions": [
     "core:default",

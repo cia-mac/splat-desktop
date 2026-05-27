@@ -1,7 +1,7 @@
 {
   "name": "ciafx",
-  "version": "2.0.2",
-  "description": "Real-time video-to-particle renderer by Ciamac",
+  "version": "0.1.0",
+  "description": "PixelCluster: real-time video-to-particle renderer by Ciamac",
   "private": true,
   "scripts": {
     "tauri": "cargo tauri",

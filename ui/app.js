@@ -20,7 +20,7 @@ const RETURN_SPEED = 1.2, WAKE_RETURN = 0.35, WAKE_THRESHOLD = 3;
 const SEED = 42;
 
 /* ═══════════════ STATE ═══════════════ */
-let vidW = 0, vidH = 0, videoName = 'ciafx';
+let vidW = 0, vidH = 0, videoName = 'PixelCluster';
 let N = 0, geom, points, mat, videoTex;
 let baseX, baseY, pos, uv, size, phaseX, phaseY, mOffX, mOffY;
 let video, renderer, camera, scene, clock;
@@ -147,7 +147,7 @@ function handleFile(file) {
   if (file.size > 500 * 1024 * 1024) {
     if (!confirm('This file is over 500 MB. Performance may suffer. Continue?')) return;
   }
-  videoName = file.name.replace(/\.[^.]+$/, '') || 'ciafx';
+  videoName = file.name.replace(/\.[^.]+$/, '') || 'PixelCluster';
   const url = URL.createObjectURL(file);
   const v = document.createElement('video');
   v.src = url; v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto';
@@ -579,7 +579,7 @@ function startRecord() {
   mediaRecorder.onstop = async () => {
     const blob = new Blob(recordedChunks, { type: mime || 'video/mp4' });
     const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    const defaultName = `ciafx_${videoName}_${ts}.${ext}`;
+    const defaultName = `PixelCluster_${videoName}_${ts}.${ext}`;
 
     // Native save dialog (Tauri) or download fallback (browser)
     if (isTauri) {
