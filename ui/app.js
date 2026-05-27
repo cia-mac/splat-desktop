@@ -188,6 +188,7 @@ function initApp(v) {
     if (mat) mat.dispose();
     if (videoTex) videoTex.dispose();
     if (video) { video.pause(); URL.revokeObjectURL(video.src); }
+    renderer.domElement.remove();
     renderer.dispose();
   }
 

@@ -1,6 +1,6 @@
 [package]
 name = "ciafx"
-version = "0.1.0"
+version = "0.1.1"
 description = "PixelCluster: real-time video-to-particle renderer by Ciamac"
 authors = ["Ciamac Parhizi"]
 edition = "2021"
