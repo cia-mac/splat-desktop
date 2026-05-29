@@ -12,5 +12,5 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![save_file])
         .run(tauri::generate_context!())
-        .expect("error while running PixelCluster");
+        .expect("error while running Pointfield");
 }

@@ -1,10 +1,11 @@
-name: Build PixelCluster
+name: Build Pointfield
 
 on:
   push:
     tags:
       - 'v*'
       - 'pixelcluster-v*'
+      - 'pointfield-v*'
   workflow_dispatch:
 
 jobs:

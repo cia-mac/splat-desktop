@@ -1,6 +1,6 @@
 {
   "identifier": "default",
-  "description": "Default capabilities for PixelCluster",
+  "description": "Default capabilities for Pointfield",
   "windows": ["main"],
   "permissions": [
     "core:default",

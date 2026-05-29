@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/dev/crates/tauri-config-schema/schema.json",
-  "productName": "PixelCluster",
+  "productName": "Pointfield",
   "version": "0.1.1",
   "identifier": "com.ciamac.ciafx",
   "build": {
@@ -9,7 +9,7 @@
   "app": {
     "windows": [
       {
-        "title": "PixelCluster",
+        "title": "Pointfield",
         "width": 1280,
         "height": 800,
         "resizable": true,

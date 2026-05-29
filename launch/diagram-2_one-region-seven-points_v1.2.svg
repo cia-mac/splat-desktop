@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Pointfield - Diagram 2 v1.1 (2026-05-29). Revision of v1: Zone C cleanup only -
+     added "MAGNIFIED VIEW" + "spread shown enlarged", loosened the cluster-spread label.
+     Spec: launch/diagram-2_one-region-seven-points_spec_v1.md. Build artifact, not published. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif">
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#8fb5e8"/>
+    </marker>
+    <g id="teach">
+      <rect x="0" y="0" width="440" height="248" fill="#2f8fd6"/>
+      <rect x="0" y="150" width="440" height="98" fill="#3aa85a"/>
+      <circle cx="92" cy="66" r="40" fill="#f3c33b"/>
+      <rect x="178" y="104" width="64" height="86" fill="#8a4fd0"/>
+      <rect x="300" y="78" width="86" height="112" fill="#d8493a"/>
+    </g>
+    <radialGradient id="redpt" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"  stop-color="#d8493a" stop-opacity="1"/>
+      <stop offset="55%" stop-color="#d8493a" stop-opacity="0.92"/>
+      <stop offset="100%" stop-color="#d8493a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect x="0" y="0" width="1600" height="900" fill="#0a0a0b"/>
+
+  <text x="64" y="66" fill="#6b665e" font-size="14" letter-spacing="3" font-family="ui-monospace,'SF Mono',Menlo,monospace">POINTFIELD — THE CORE STEP</text>
+  <text x="64" y="150" fill="#ece8df" font-size="46" font-weight="200" letter-spacing="-1.5">One region, seven points</text>
+  <text x="64" y="192" fill="#9a948a" font-size="20" font-weight="300">A sampled region reads one live color, then spawns seven points that share it.</text>
+
+  <!-- ZONE A: locate the region -->
+  <svg x="64" y="250" width="440" height="248" viewBox="0 0 440 248">
+    <use href="#teach"/>
+    <rect x="330" y="106.3" width="36.7" height="35.4" fill="none" stroke="#78b4ff" stroke-width="2.5"/>
+  </svg>
+  <rect x="64" y="250" width="440" height="248" fill="none" stroke="#2a2a30" stroke-width="1.5"/>
+
+  <line x1="430.7" y1="356.3" x2="700" y2="274" stroke="#4d7fe0" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.55"/>
+  <line x1="430.7" y1="391.7" x2="700" y2="474" stroke="#4d7fe0" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.55"/>
+  <text x="556" y="368" fill="#6b665e" font-size="13" text-anchor="middle" font-family="ui-monospace,'SF Mono',Menlo,monospace">sample</text>
+
+  <!-- ZONE B: one region, one color -->
+  <svg x="580" y="250" width="440" height="248" viewBox="0 0 440 248">
+    <rect x="0" y="0" width="440" height="248" fill="#0a0a0b"/>
+    <rect x="120" y="24" width="200" height="200" fill="#d8493a" stroke="#78b4ff" stroke-width="2.5"/>
+    <rect x="22" y="22" width="40" height="26" fill="#d8493a" stroke="#9a948a" stroke-width="1"/>
+    <text x="22" y="64" fill="#9a948a" font-size="13" font-family="ui-monospace,'SF Mono',Menlo,monospace">#d8493a</text>
+    <line x1="208" y1="124" x2="232" y2="124" stroke="#ece8df" stroke-width="1.4"/>
+    <line x1="220" y1="112" x2="220" y2="136" stroke="#ece8df" stroke-width="1.4"/>
+    <circle cx="220" cy="124" r="2.4" fill="#ece8df"/>
+    <text x="220" y="210" fill="#ece8df" font-size="13" text-anchor="middle" font-family="ui-monospace,'SF Mono',Menlo,monospace">UV (u, v) → one texel</text>
+  </svg>
+  <rect x="580" y="250" width="440" height="248" fill="none" stroke="#2a2a30" stroke-width="1.5"/>
+
+  <line x1="1032" y1="374" x2="1082" y2="374" stroke="#8fb5e8" stroke-width="2" marker-end="url(#arrow)"/>
+  <text x="1057" y="362" fill="#6b665e" font-size="13" text-anchor="middle" font-family="ui-monospace,'SF Mono',Menlo,monospace">spawn</text>
+
+  <!-- ZONE C: seven points (v1.1 cleanup) -->
+  <svg x="1096" y="250" width="440" height="248" viewBox="0 0 440 248">
+    <rect x="0" y="0" width="440" height="248" fill="#0a0a0b"/>
+    <text x="16" y="20" fill="#6b665e" font-size="11.5" letter-spacing="2" font-family="ui-monospace,'SF Mono',Menlo,monospace">MAGNIFIED VIEW</text>
+    <rect x="120" y="24" width="200" height="200" fill="none" stroke="#78b4ff" stroke-width="1.4" opacity="0.3"/>
+    <circle cx="220" cy="124" r="58" fill="none" stroke="#6b665e" stroke-width="1" stroke-dasharray="4 4"/>
+    <line x1="220" y1="124" x2="266" y2="104" stroke="#6b665e" stroke-width="1" stroke-dasharray="3 3"/>
+    <circle cx="220" cy="124" r="2.2" fill="#9a948a"/>
+    <g>
+      <circle cx="220" cy="124" r="15" fill="url(#redpt)"/>
+      <circle cx="180" cy="140" r="11" fill="url(#redpt)"/>
+      <circle cx="256" cy="150" r="13" fill="url(#redpt)"/>
+      <circle cx="266" cy="104" r="9.5" fill="url(#redpt)"/>
+      <circle cx="192" cy="98"  r="14" fill="url(#redpt)"/>
+      <circle cx="236" cy="86"  r="10" fill="url(#redpt)"/>
+      <circle cx="160" cy="116" r="12" fill="url(#redpt)"/>
+    </g>
+    <text x="220" y="214" fill="#6b665e" font-size="12.5" text-anchor="middle" font-family="ui-monospace,'SF Mono',Menlo,monospace">spread ≤ 4.0 px · shown enlarged</text>
+  </svg>
+  <rect x="1096" y="250" width="440" height="248" fill="none" stroke="#2a2a30" stroke-width="1.5"/>
+
+  <!-- captions -->
+  <text x="284"  y="524" fill="#ece8df" font-size="19" font-weight="300" text-anchor="middle">One sampled region</text>
+  <text x="800"  y="524" fill="#ece8df" font-size="19" font-weight="300" text-anchor="middle">Reads one live color</text>
+  <text x="1316" y="524" fill="#ece8df" font-size="19" font-weight="300" text-anchor="middle">Becomes seven points</text>
+  <text x="284"  y="548" fill="#6b665e" font-size="13" text-anchor="middle" font-family="ui-monospace,'SF Mono',Menlo,monospace">one grid cell — default grid 417 × 235</text>
+  <text x="800"  y="548" fill="#6b665e" font-size="13" text-anchor="middle" font-family="ui-monospace,'SF Mono',Menlo,monospace">sampled live from the video texture</text>
+  <text x="1316" y="548" fill="#6b665e" font-size="13" text-anchor="middle" font-family="ui-monospace,'SF Mono',Menlo,monospace">PER_CLUSTER = 7 — adjustable 1–8</text>
+
+  <!-- mechanism card -->
+  <rect x="64" y="596" width="700" height="186" fill="#0f0f12" stroke="#1d1d20" stroke-width="1"/>
+  <text x="86" y="626" fill="#4d7fe0" font-size="13" letter-spacing="2.5" font-family="ui-monospace,'SF Mono',Menlo,monospace">MECHANISM</text>
+  <g font-family="ui-monospace,'SF Mono',Menlo,monospace" font-size="13.5" fill="#9a948a">
+    <text x="86" y="654">OUTPUT PRIMITIVE — GL_POINTS (THREE.Points)</text>
+    <text x="86" y="678">POINTS PER REGION — 7 default · 1–8</text>
+    <text x="86" y="702">CLUSTER_SPREAD — 4.0 px (random polar offset)</text>
+    <text x="86" y="726">POINT SIZE — random / procedural, not brightness-driven</text>
+    <text x="86" y="750">COLOR — sampled live from the video texture; all 7 share it</text>
+    <text x="86" y="774">POINT SHAPE — soft gaussian disc, additive</text>
+  </g>
+
+  <!-- the seven points legend -->
+  <rect x="800" y="596" width="736" height="186" fill="#0f0f12" stroke="#1d1d20" stroke-width="1"/>
+  <text x="822" y="626" fill="#4d7fe0" font-size="13" letter-spacing="2.5" font-family="ui-monospace,'SF Mono',Menlo,monospace">THE SEVEN POINTS</text>
+  <g font-size="15" font-weight="300" fill="#ece8df">
+    <text x="822" y="654">1 — all seven share the one sampled color</text>
+    <text x="822" y="680">2 — offset direction is random (angle)</text>
+    <text x="822" y="706">3 — offset distance is random, ≤ 4.0 px (cluster spread)</text>
+    <text x="822" y="732">4 — sizes vary; random, not brightness-driven</text>
+    <text x="822" y="758">5 — each point is a soft gaussian disc</text>
+  </g>
+
+  <!-- footer (light technical) -->
+  <line x1="64" y1="824" x2="1536" y2="824" stroke="#1d1d20" stroke-width="1"/>
+  <text x="64" y="852" fill="#9a948a" font-size="16" font-weight="300">PER_CLUSTER = 7 by default — across the frame, 417 × 235 regions × 7 = 685,965 points.</text>
+  <text x="64" y="876" fill="#6b665e" font-size="13.5" font-weight="300">A renderer — not a filter, not AI, not a physics simulation.</text>
+
+</svg>
