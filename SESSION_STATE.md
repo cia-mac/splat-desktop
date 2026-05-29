@@ -13,7 +13,8 @@ last_updated: 2026-05-27
 ## Last Updated
 
 - Date: 2026-05-27
-- Session summary: Shipped PixelCluster v0.1.0 (rebrand of ciafx v2.0.2) and v0.1.1 (two bug fixes: aspect-ratio preservation, canvas leak on video switch). Both are live releases; v0.1.1 is Latest. CI green on both. Phase D (landing page, easter egg, social posts) deferred — awaiting Cia's hero footage.
+- Session summary: Shipped PixelCluster v0.1.0 (rebrand of ciafx v2.0.2) and v0.1.1 (two bug fixes: aspect-ratio preservation, canvas leak on video switch). Both are live releases; v0.1.1 is Latest. CI green on both.
+- 2026-05-27 (later): Phase D partially executed in ciamac-site repo. `/pixelcluster` page scaffolded on stage (hero placeholder), homepage easter egg repointed (copy + v0.1.1 download URLs + `egg-go` now opens `/pixelcluster`), middleware bypass for `/pixelcluster*` added in both root and `deploy/` copies. Hero loop video + live promotion + social posts still pending Cia.
 
 ## Current Objective
 
@@ -30,12 +31,12 @@ GitHub release `pixelcluster-v0.1.1` published 2026-05-27T08:01:14Z. Promoted to
 
 ## Next Actions (Ordered)
 
-1. Wait for Cia's hero footage.
-2. When delivered, encode to specs (1280×720 or 1920×1080 H.264 muted MP4, 6-10s, under 4 MB).
-3. Build `ciamac.com/pixelcluster` landing page on the `ciamac-site` stage branch.
-4. Repoint stage easter egg from `ciafx_2.0.2_aarch64.dmg` to `PixelCluster_0.1.1_aarch64.dmg`.
-5. Cia reviews stage; on explicit "go", promote stage → live.
-6. Post LinkedIn + X (one-time launch, per `[[project_outlet_stack]]` + `[[project_pixelcluster_v01]]`).
+1. Cia reviews `/pixelcluster` page on stage (ciamac-site-stage.vercel.app/pixelcluster). Eyeballs hero placeholder, copy, downloads, controls block.
+2. Cia delivers hero footage. Encode to specs (1280×720 or 1920×1080 H.264 muted MP4, 6-10s, under 4 MB). Drop at `ciamac-site/deploy/pixelcluster/loop.mp4`. Replace `.placeholder` div with `<video autoplay muted loop playsinline src="loop.mp4">`.
+3. On Cia's explicit "go", promote ciamac-site to live.
+4. Post LinkedIn + X (one-time launch, per `[[project_outlet_stack]]` + `[[project_pixelcluster_v01]]`).
+5. Optional: append one-line tombstone to v2.0.2 release notes ("renamed to PixelCluster v0.1+. See pixelcluster-v0.1.1.").
+6. Optional: rewrite v0.1.0 / v0.1.1 release notes to lead with the public framing rather than engine internals.
 
 ## Decisions Made This Session
 
