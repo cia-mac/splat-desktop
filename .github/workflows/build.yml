@@ -27,13 +27,13 @@ jobs:
       - name: Upload MSI
         uses: actions/upload-artifact@v4
         with:
-          name: pixelcluster-windows-msi
+          name: pointfield-windows-msi
           path: src-tauri/target/release/bundle/msi/*.msi
 
       - name: Upload NSIS installer
         uses: actions/upload-artifact@v4
         with:
-          name: pixelcluster-windows-exe
+          name: pointfield-windows-exe
           path: src-tauri/target/release/bundle/nsis/*.exe
 
   build-mac-arm:
@@ -55,13 +55,13 @@ jobs:
       - name: Upload DMG
         uses: actions/upload-artifact@v4
         with:
-          name: pixelcluster-mac-arm-dmg
+          name: pointfield-mac-arm-dmg
           path: src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
 
       - name: Upload App
         uses: actions/upload-artifact@v4
         with:
-          name: pixelcluster-mac-arm-app
+          name: pointfield-mac-arm-app
           path: src-tauri/target/aarch64-apple-darwin/release/bundle/macos/*.app
 
   release:
@@ -78,7 +78,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            pixelcluster-windows-msi/*
-            pixelcluster-windows-exe/*
-            pixelcluster-mac-arm-dmg/*
+            pointfield-windows-msi/*
+            pointfield-windows-exe/*
+            pointfield-mac-arm-dmg/*
           draft: true
