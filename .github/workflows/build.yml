@@ -8,21 +8,20 @@ on:
       - 'pointfield-v*'
   workflow_dispatch:
 
-# macOS signing + notarization is driven entirely by repository secrets.
-# When they are ABSENT, every signing step is skipped and the build is unsigned
-# (the historical behavior). When they are PRESENT, the macOS .app is signed with
-# the Developer ID, hardened-runtime, and notarized during `cargo tauri build`,
-# and a versionless `Pointfield-macOS.dmg` is attached so download links never
-# need a per-release edit.
+# macOS signing + notarization is driven by repository secrets, read into the
+# build job's env. When they are ABSENT every value is empty and Tauri produces
+# an UNSIGNED build (the historical behavior). When they are PRESENT, Tauri
+# imports the cert, signs with the Developer ID + hardened runtime, notarizes,
+# and staples during `cargo tauri build`, and a versionless Pointfield-macOS.dmg
+# is attached so download links can target releases/latest/download forever.
 #
-# To turn signing ON, add these secrets to the repo (Settings > Secrets > Actions):
+# Secrets (Settings > Secrets and variables > Actions):
 #   APPLE_CERTIFICATE            base64 of the Developer ID Application .p12
-#   APPLE_CERTIFICATE_PASSWORD   the .p12 export password
+#   APPLE_CERTIFICATE_PASSWORD   the .p12 password
 #   APPLE_SIGNING_IDENTITY       Developer ID Application: ciamac parhizi (3AUT8DTWP3)
 #   APPLE_ID                     Apple ID email used for notarization
 #   APPLE_PASSWORD               app-specific password for that Apple ID
 #   APPLE_TEAM_ID                3AUT8DTWP3
-# (Export the .p12 from Keychain Access; base64 it with `base64 -i devid.p12 | pbcopy`.)
 
 jobs:
   build-windows:
@@ -66,8 +65,11 @@ jobs:
   build-mac-arm:
     runs-on: macos-14
     env:
-      # Empty unless the secrets exist. Empty APPLE_SIGNING_IDENTITY => Tauri
-      # produces an unsigned build (status quo). Set => sign + notarize.
+      # All empty unless the secrets exist. Empty => Tauri builds unsigned
+      # (status quo). Present => Tauri imports the cert, signs (hardened runtime),
+      # notarizes, and staples during the build.
+      APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
       APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
       APPLE_ID: ${{ secrets.APPLE_ID }}
       APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
@@ -83,34 +85,14 @@ jobs:
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2"
 
-      # Import the Developer ID cert into a throwaway keychain. Skipped entirely
-      # when the secret is absent, so unsigned builds keep working unchanged.
-      - name: Import Developer ID certificate
-        if: ${{ secrets.APPLE_CERTIFICATE != '' }}
-        env:
-          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
-          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
-        run: |
-          set -euo pipefail
-          CERT="$RUNNER_TEMP/devid.p12"
-          KEYCHAIN="$RUNNER_TEMP/build.keychain-db"
-          KCPASS="$(openssl rand -base64 24)"
-          echo "$APPLE_CERTIFICATE" | base64 --decode > "$CERT"
-          security create-keychain -p "$KCPASS" "$KEYCHAIN"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN"
-          security unlock-keychain -p "$KCPASS" "$KEYCHAIN"
-          security import "$CERT" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KCPASS" "$KEYCHAIN"
-          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | sed s/\"//g)
-          rm -f "$CERT"
-
-      - name: Build
+      - name: Build (signs + notarizes when secrets are present)
         run: cargo tauri build --target aarch64-apple-darwin
 
       # Versionless copy, signed builds only: never let a stable URL serve an
-      # unsigned (Gatekeeper "damaged") DMG.
+      # unsigned (Gatekeeper "damaged") DMG. env context is allowed in `if`;
+      # the `secrets` context is NOT, so we gate on env.APPLE_CERTIFICATE.
       - name: Stable-named DMG (signed builds only)
-        if: ${{ secrets.APPLE_CERTIFICATE != '' }}
+        if: env.APPLE_CERTIFICATE != ''
         run: |
           set -euo pipefail
           dmg=$(ls src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg | head -1)
