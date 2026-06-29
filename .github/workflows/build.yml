@@ -8,6 +8,22 @@ on:
       - 'pointfield-v*'
   workflow_dispatch:
 
+# macOS signing + notarization is driven entirely by repository secrets.
+# When they are ABSENT, every signing step is skipped and the build is unsigned
+# (the historical behavior). When they are PRESENT, the macOS .app is signed with
+# the Developer ID, hardened-runtime, and notarized during `cargo tauri build`,
+# and a versionless `Pointfield-macOS.dmg` is attached so download links never
+# need a per-release edit.
+#
+# To turn signing ON, add these secrets to the repo (Settings > Secrets > Actions):
+#   APPLE_CERTIFICATE            base64 of the Developer ID Application .p12
+#   APPLE_CERTIFICATE_PASSWORD   the .p12 export password
+#   APPLE_SIGNING_IDENTITY       Developer ID Application: ciamac parhizi (3AUT8DTWP3)
+#   APPLE_ID                     Apple ID email used for notarization
+#   APPLE_PASSWORD               app-specific password for that Apple ID
+#   APPLE_TEAM_ID                3AUT8DTWP3
+# (Export the .p12 from Keychain Access; base64 it with `base64 -i devid.p12 | pbcopy`.)
+
 jobs:
   build-windows:
     runs-on: windows-latest
@@ -24,6 +40,17 @@ jobs:
         run: cargo tauri build
         working-directory: .
 
+      # Versionless copies so the site can link to a stable URL forever.
+      # Windows installers are unsigned either way (no change in trust posture).
+      - name: Stable-named Windows installers
+        shell: bash
+        run: |
+          set -euo pipefail
+          msi=$(ls src-tauri/target/release/bundle/msi/*.msi | head -1)
+          exe=$(ls src-tauri/target/release/bundle/nsis/*.exe | head -1)
+          cp "$msi" "src-tauri/target/release/bundle/msi/Pointfield-Windows.msi"
+          cp "$exe" "src-tauri/target/release/bundle/nsis/Pointfield-Windows-setup.exe"
+
       - name: Upload MSI
         uses: actions/upload-artifact@v4
         with:
@@ -38,6 +65,13 @@ jobs:
 
   build-mac-arm:
     runs-on: macos-14
+    env:
+      # Empty unless the secrets exist. Empty APPLE_SIGNING_IDENTITY => Tauri
+      # produces an unsigned build (status quo). Set => sign + notarize.
+      APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
     steps:
       - uses: actions/checkout@v4
 
@@ -49,8 +83,38 @@ jobs:
       - name: Install Tauri CLI
         run: cargo install tauri-cli --version "^2"
 
+      # Import the Developer ID cert into a throwaway keychain. Skipped entirely
+      # when the secret is absent, so unsigned builds keep working unchanged.
+      - name: Import Developer ID certificate
+        if: ${{ secrets.APPLE_CERTIFICATE != '' }}
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          CERT="$RUNNER_TEMP/devid.p12"
+          KEYCHAIN="$RUNNER_TEMP/build.keychain-db"
+          KCPASS="$(openssl rand -base64 24)"
+          echo "$APPLE_CERTIFICATE" | base64 --decode > "$CERT"
+          security create-keychain -p "$KCPASS" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KCPASS" "$KEYCHAIN"
+          security import "$CERT" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KCPASS" "$KEYCHAIN"
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | sed s/\"//g)
+          rm -f "$CERT"
+
       - name: Build
         run: cargo tauri build --target aarch64-apple-darwin
+
+      # Versionless copy, signed builds only: never let a stable URL serve an
+      # unsigned (Gatekeeper "damaged") DMG.
+      - name: Stable-named DMG (signed builds only)
+        if: ${{ secrets.APPLE_CERTIFICATE != '' }}
+        run: |
+          set -euo pipefail
+          dmg=$(ls src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg | head -1)
+          cp "$dmg" "src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/Pointfield-macOS.dmg"
 
       - name: Upload DMG
         uses: actions/upload-artifact@v4
