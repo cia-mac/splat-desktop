@@ -1,14 +1,39 @@
 ---
-workflow_step: v0_1_1_released_latest_phase_d_awaiting_hero_footage
+workflow_step: pointfield_rename_docs_current_2026-07-12
 agent_type: execute
 token_budget: standard
-last_updated: 2026-05-27
+last_updated: 2026-07-12
 ---
 
-# SESSION_STATE.md — splat-desktop (PixelCluster)
+# SESSION_STATE.md — splat-desktop (Pointfield)
 
 > Tactical handoff between sessions. Update at every session exit.
 > Notion holds strategy. This file holds working state.
+
+## 2026-07-12 EXIT - rename status docs brought current (CLOSED)
+
+Snapshot before this block: none (append only).
+Rename-sweep session (primary lane: ciamac-site). Here it only brought stale
+status docs current; no code, config, or release changes.
+
+### Done
+- CLAUDE.md status updated: rename Phases 3+4 are done (site /pointfield live,
+  README done, releases pointfield-v0.1.1/v0.1.2 ship Pointfield-named assets;
+  old PixelCluster releases stay published as history). Bundle ID, crate name,
+  repo name remain deferred.
+- Dated status updates in launch/RELEASE_PLAN_v3.md (release build done),
+  launch/mac-app-store_v2.md (Phase 2 done), launch/social-copy_v2.md
+  (sequencing dependency satisfied; firing still needs Cia's go).
+
+### Pending / open
+- launch/SESSION_STATE.md has pre-existing uncommitted modifications from
+  another session; untouched here.
+
+### Operational notes
+- launch/RELEASE_PLAN_v3.md is untracked in git; its edit lives on disk only.
+
+### Why we stopped
+finished
 
 ## Last Updated
 

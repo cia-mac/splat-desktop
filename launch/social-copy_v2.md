@@ -4,7 +4,7 @@ Created 2026-05-29. Supersedes `social-copy_v1.md` (PixelCluster era, kept). Pub
 
 **Naming/vocabulary (locked):** public name **Pointfield** (one word, capital P, lowercase f). "points" = precise primitive; "point clusters" = mechanism; "particle-like" = visual only; never "particle simulation." Density registers: public "hundreds of thousands of points"; technical "685,965 = 417 × 235 sampled regions × 7 points per region"; browser "lower density for real-time performance."
 
-**Sequencing dependency (do NOT fire early):** these drafts use `ciamac.com/pointfield`. That route + a Pointfield-named GitHub release (`Pointfield_*` assets) must land first (rename Phases 3–4). Until then the live route is `/pixelcluster` and assets are `PixelCluster_0.1.1_*`. Posting before the cutover would point at the old name.
+**Sequencing dependency (do NOT fire early):** these drafts use `ciamac.com/pointfield`. That route + a Pointfield-named GitHub release (`Pointfield_*` assets) must land first (rename Phases 3–4). (Status update 2026-07-12: SATISFIED. The live route is /pointfield and releases pointfield-v0.1.1/v0.1.2 ship Pointfield-named assets. Firing still needs Cia's explicit go.)
 
 **Canonical lines**
 - Public: "Pointfield redraws moving images as interactive fields of glowing points."
@@ -14,28 +14,24 @@ Created 2026-05-29. Supersedes `social-copy_v1.md` (PixelCluster era, kept). Pub
 ---
 
 ## X (thread, 3)
-> **1/** Pointfield.
-> It redraws moving images as interactive fields of glowing points, in real time.
-> Running quietly in my work for a while. Now it has a name.
-> ciamac.com/pointfield
+> **1/** Pointfield takes any video and redraws it, frame by frame, as a field of glowing points. The field follows your cursor. Real time, nothing to install.
 >
 > **2/** A sampling grid goes over each frame. Every cell reads one live color and spawns a small cluster of points that share it. Hundreds of thousands of points, redrawn every frame. Move your cursor and the field moves.
 >
 > **3/** Runs live in your browser, nothing to install. Or take the app, free, Mac + Windows.
 > ciamac.com/pointfield
 
-## LinkedIn (single post)
-> For a while I've had a renderer buried in my imaging work that does one thing: it redraws moving images as fields of glowing points.
+## LinkedIn (single post; link goes in first comment, NOT in post body, and the post does not announce it)
+> Pointfield turns any video into an interactive field of glowing points.
 >
-> I named it. Pointfield.
+> Drop a clip into the browser and it redraws, frame by frame, as hundreds of thousands of points that drift and follow your cursor. Real time, nothing to install.
 >
-> It lays a sampling grid over each video frame. Every cell reads the color at that part of the image, then spawns a small cluster of points that share it. Hundreds of thousands of them, redrawn every frame. They drift, and they respond to your cursor.
+> No model in the loop, no filter. A sampling grid reads the color in every cell of each frame and spawns a small cluster of points that share it.
 >
-> Run it in your browser right now, no install. Drop in any clip and watch it resolve into points. The desktop app is free for Mac and Windows.
->
-> ciamac.com/pointfield
->
-> (A renderer, not AI. Not a filter.)
+> Free desktop app for Mac and Windows.
+
+**First comment (posted immediately after):**
+> Try it: ciamac.com/pointfield
 
 ## Substack (note)
 > New thing on the site.
@@ -47,7 +43,7 @@ Created 2026-05-29. Supersedes `social-copy_v1.md` (PixelCluster era, kept). Pub
 ## YouTube description
 > Pointfield redraws moving images as interactive fields of glowing points.
 >
-> Drop a video in. Pointfield lays a sampling grid over each frame, reads the color at every cell, and spawns a small cluster of glowing points that share that color — hundreds of thousands of them, redrawn every frame in real time. They drift on a turbulence field and respond to your cursor: swirl, push, attract.
+> Drop a video in. Pointfield lays a sampling grid over each frame, reads the color at every cell, and spawns a small cluster of glowing points that share that color. Hundreds of thousands of them, redrawn every frame in real time. They drift on a turbulence field and respond to your cursor: swirl, push, attract.
 >
 > It is a renderer, not a filter, not AI, not Gaussian splatting, not a physics simulation. The same engine has shipped since April 2026; v0.1 is the release that names it.
 >

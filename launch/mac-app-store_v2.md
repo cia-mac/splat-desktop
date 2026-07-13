@@ -1,6 +1,6 @@
 # Pointfield — Mac App Store Submission (v2)
 
-v2 (2026-05-29): PixelCluster to Pointfield text swap of `mac-app-store_v1.md` (kept). Substance unchanged; the MAS track remains parked. App `productName` is still "PixelCluster" until rename Phase 2.
+v2 (2026-05-29): PixelCluster to Pointfield text swap of `mac-app-store_v1.md` (kept). Substance unchanged; the MAS track remains parked. (Status update 2026-07-12: rename Phase 2 is done; `productName` is now "Pointfield".)
 
 Created 2026-05-28. Execution-ready checklist for getting the desktop app into the Mac App Store.
 
