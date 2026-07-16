@@ -1,14 +1,44 @@
 ---
-workflow_step: pointfield_rename_docs_current_2026-07-12
+workflow_step: rename_docs_pushed_public_2026-07-15
 agent_type: execute
 token_budget: standard
-last_updated: 2026-07-12
+last_updated: 2026-07-15
 ---
 
 # SESSION_STATE.md — splat-desktop (Pointfield)
 
 > Tactical handoff between sessions. Update at every session exit.
 > Notion holds strategy. This file holds working state.
+
+## 2026-07-15 EXIT - vendor-three-offline pushed public on Cia's explicit go (CLOSED)
+
+Snapshot before this block: none (append only).
+Cross-lane touch from the ciamac-site reconcile session. Single action:
+published the rename-sweep docs commit that had been waiting on Cia's call
+(public repo). No code, config, or release changes.
+
+### Done
+- Read 35dc44c's full diff before pushing (public-repo rule): 4 markdown
+  files only (CLAUDE.md status, SESSION_STATE exit block, MAS status line,
+  social-copy drafts), no code, no secrets. Evidence: diff reviewed in
+  session, stat 4 files / +45 -24.
+- Pushed origin vendor-three-offline d2ffaad..35dc44c
+  (github.com/cia-mac/splat-desktop). Branch now even with origin.
+- TASKS.md rename-sweep push item fully closed (both halves; committed to
+  the canon repo in 6dca602 by the parallel cluster-consolidation session).
+
+### Pending / open
+- Firing the social-copy drafts still needs Cia's separate explicit go;
+  pushing the draft FILE published nothing on X/LinkedIn.
+- Pre-existing uncommitted launch/ files (launch/SESSION_STATE.md mod +
+  untracked BUGREPORT/G2/LAUNCH_DAY/README/RELEASE_PLAN_v3/assets) belong
+  to another session; untouched here, still awaiting that lane's own exit.
+
+### Operational notes
+- none
+
+### Why we stopped
+finished; single-action session scope complete.
 
 ## 2026-07-12 EXIT - rename status docs brought current (CLOSED)
 
