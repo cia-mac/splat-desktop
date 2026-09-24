@@ -1,0 +1,9 @@
+models/*.onnx
+vendor/ort/*.wasm
+results/**/*.mp4
+results/**/*.pfd
+results/*.pfd
+frames/
+results/run*/**/*.jpg
+results/run*/*.jpg
+media/*.mp4

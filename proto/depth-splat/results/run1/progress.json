@@ -1,0 +1,161 @@
+{
+ "started": "2026-09-24T08:28:22.367Z",
+ "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.2 Safari/605.1.15",
+ "dpr": 2,
+ "canvas": [
+  3452,
+  1996
+ ],
+ "css": [
+  1726,
+  998
+ ],
+ "adapter": {
+  "features": 21
+ },
+ "webgl": "WebGL 2.0",
+ "infer": [
+  {
+   "model": "q4f16",
+   "res": "518x294",
+   "coldLoadMs": 443,
+   "firstRunMs": 318,
+   "inferMed": 66,
+   "inferP90": 100,
+   "inferMin": 57,
+   "preMed": 9
+  },
+  {
+   "model": "q4f16",
+   "res": "924x518",
+   "coldLoadMs": 443,
+   "firstRunMs": 748,
+   "inferMed": 594,
+   "inferP90": 602,
+   "inferMin": 580,
+   "preMed": 12
+  },
+  {
+   "model": "fp16",
+   "res": "518x294",
+   "coldLoadMs": 603,
+   "firstRunMs": 125,
+   "inferMed": 73,
+   "inferP90": 80,
+   "inferMin": 70,
+   "preMed": 10
+  },
+  {
+   "model": "fp16",
+   "res": "924x518",
+   "coldLoadMs": 603,
+   "firstRunMs": 498,
+   "inferMed": 539,
+   "inferP90": 561,
+   "inferMin": 524,
+   "preMed": 11
+  }
+ ],
+ "step": "render sorted K7",
+ "render": [
+  {
+   "prim": "points",
+   "N": 97995,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 17,
+   "frames": 180,
+   "sortMed": null,
+   "sortP95": null,
+   "sorts": null
+  },
+  {
+   "prim": "points",
+   "N": 391980,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 18,
+   "frames": 180,
+   "sortMed": null,
+   "sortP95": null,
+   "sorts": null
+  },
+  {
+   "prim": "points",
+   "N": 685965,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 18,
+   "frames": 180,
+   "sortMed": null,
+   "sortP95": null,
+   "sorts": null
+  },
+  {
+   "prim": "surfels",
+   "N": 97995,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 18,
+   "frames": 180,
+   "sortMed": null,
+   "sortP95": null,
+   "sorts": null
+  },
+  {
+   "prim": "surfels",
+   "N": 391980,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 18,
+   "frames": 180,
+   "sortMed": null,
+   "sortP95": null,
+   "sorts": null
+  },
+  {
+   "prim": "surfels",
+   "N": 685965,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 18,
+   "frames": 180,
+   "sortMed": null,
+   "sortP95": null,
+   "sorts": null
+  },
+  {
+   "prim": "sorted",
+   "N": 97995,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 18,
+   "frames": 180,
+   "sortMed": 2,
+   "sortP95": 3,
+   "sorts": 180
+  },
+  {
+   "prim": "sorted",
+   "N": 391980,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 17,
+   "frames": 180,
+   "sortMed": 2,
+   "sortP95": 3,
+   "sorts": 181
+  },
+  {
+   "prim": "sorted",
+   "N": 685965,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 18,
+   "frames": 180,
+   "sortMed": 2,
+   "sortP95": 3,
+   "sorts": 180
+  }
+ ]
+}

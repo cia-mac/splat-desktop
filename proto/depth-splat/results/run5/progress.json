@@ -1,0 +1,214 @@
+{
+ "started": "2026-09-24T17:18:48.072Z",
+ "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.2 Safari/605.1.15",
+ "dpr": 2,
+ "canvas": [
+  3452,
+  1996
+ ],
+ "css": [
+  1726,
+  998
+ ],
+ "adapter": {
+  "features": 21
+ },
+ "webgl": "WebGL 2.0",
+ "infer": [],
+ "render": [
+  {
+   "prim": "points",
+   "N": 97995,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 18,
+   "syncFrameMed": 1,
+   "syncFrameP90": 2,
+   "frames": 180,
+   "sortMed": null,
+   "sortP95": null,
+   "sorts": null
+  },
+  {
+   "prim": "points",
+   "N": 391980,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 18,
+   "syncFrameMed": 1,
+   "syncFrameP90": 2,
+   "frames": 180,
+   "sortMed": null,
+   "sortP95": null,
+   "sorts": null
+  },
+  {
+   "prim": "points",
+   "N": 685965,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 17,
+   "syncFrameMed": 1,
+   "syncFrameP90": 3,
+   "frames": 180,
+   "sortMed": null,
+   "sortP95": null,
+   "sorts": null
+  },
+  {
+   "prim": "psorted",
+   "N": 97995,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 18,
+   "syncFrameMed": 1,
+   "syncFrameP90": 1,
+   "frames": 180,
+   "sortMed": 2,
+   "sortP95": 3,
+   "sorts": 180
+  },
+  {
+   "prim": "psorted",
+   "N": 391980,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 18,
+   "syncFrameMed": 1,
+   "syncFrameP90": 2,
+   "frames": 180,
+   "sortMed": 3,
+   "sortP95": 3,
+   "sorts": 179
+  },
+  {
+   "prim": "psorted",
+   "N": 685965,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 18,
+   "syncFrameMed": 2,
+   "syncFrameP90": 3,
+   "frames": 180,
+   "sortMed": 3,
+   "sortP95": 4,
+   "sorts": 180
+  },
+  {
+   "prim": "surfels",
+   "N": 97995,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 18,
+   "syncFrameMed": 2,
+   "syncFrameP90": 3,
+   "frames": 180,
+   "sortMed": null,
+   "sortP95": null,
+   "sorts": null
+  },
+  {
+   "prim": "surfels",
+   "N": 391980,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 18,
+   "syncFrameMed": 3,
+   "syncFrameP90": 4,
+   "frames": 179,
+   "sortMed": null,
+   "sortP95": null,
+   "sorts": null
+  },
+  {
+   "prim": "surfels",
+   "N": 685965,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 18,
+   "syncFrameMed": 7,
+   "syncFrameP90": 9,
+   "frames": 180,
+   "sortMed": null,
+   "sortP95": null,
+   "sorts": null
+  },
+  {
+   "prim": "sorted",
+   "N": 97995,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 17,
+   "syncFrameMed": 1,
+   "syncFrameP90": 2,
+   "frames": 180,
+   "sortMed": 2,
+   "sortP95": 3,
+   "sorts": 180
+  },
+  {
+   "prim": "sorted",
+   "N": 391980,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 17,
+   "syncFrameMed": 2,
+   "syncFrameP90": 3,
+   "frames": 180,
+   "sortMed": 2,
+   "sortP95": 3,
+   "sorts": 180
+  },
+  {
+   "prim": "sorted",
+   "N": 685965,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 18,
+   "syncFrameMed": 4,
+   "syncFrameP90": 7,
+   "frames": 179,
+   "sortMed": 2,
+   "sortP95": 4,
+   "sorts": 179
+  }
+ ],
+ "step": "baked psorted",
+ "video": [],
+ "bake": {
+  "frames": 150,
+  "step": 2,
+  "bakeMs": 15360,
+  "perFrameMs": 102.4,
+  "inferMed": 87,
+  "memMB": 91.4,
+  "flickerRawPct": 0.719,
+  "flickerSmoothedPct": 0.476,
+  "clipRange": [
+   0,
+   4.71484375
+  ]
+ },
+ "bakedPlayback": [
+  {
+   "prim": "surfels",
+   "N": 97995,
+   "fps": 58.8,
+   "frameP95": 18,
+   "syncFrameMed": 2,
+   "syncFrameP90": 3,
+   "sortMed": null,
+   "sorts": null
+  },
+  {
+   "prim": "psorted",
+   "N": 685965,
+   "fps": 58.8,
+   "frameP95": 17,
+   "syncFrameMed": 1,
+   "syncFrameP90": 2,
+   "sortMed": 3,
+   "sorts": 179
+  }
+ ]
+}

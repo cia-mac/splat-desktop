@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pointfield depth prototype (Phase 0)</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; color: #ddd; font: 12px/1.4 -apple-system, system-ui, sans-serif; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; touch-action: none; }
+  #panel { position: fixed; top: 10px; left: 10px; background: rgba(12,12,14,.82); padding: 10px 12px; border-radius: 8px; width: 250px; }
+  #panel h1 { font-size: 12px; margin: 0 0 6px; color: #fff; letter-spacing: .02em; }
+  #panel label { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 4px 0; }
+  #panel select, #panel input[type=range] { width: 130px; }
+  #panel .row { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; }
+  #panel button { background: #222; color: #ddd; border: 1px solid #444; border-radius: 4px; padding: 3px 7px; font: inherit; cursor: pointer; }
+  #panel button.on { background: #d8493a; border-color: #d8493a; color: #fff; }
+  #stats { white-space: pre; font: 11px/1.45 ui-monospace, Menlo, monospace; color: #9fd; margin-top: 6px; }
+  #log { position: fixed; bottom: 10px; left: 10px; font: 11px ui-monospace, Menlo, monospace; color: #fc6; white-space: pre; }
+  #panel.hidden { display: none; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="panel">
+  <h1>Depth prototype · Phase 0</h1>
+  <div class="row" id="prims">
+    <button data-prim="points">Points</button>
+    <button data-prim="psorted">Points sorted</button>
+    <button data-prim="surfels">Surfels</button>
+    <button data-prim="sorted">Sorted</button>
+  </div>
+  <label>Per cell <select id="K"><option value="1">1 (98k)</option><option value="4">4 (392k)</option><option value="7">7 (686k)</option></select></label>
+  <label>Clip <select id="clip"><option>default</option><option>luchi</option><option>claudia</option></select></label>
+  <label>Model <select id="model"><option>fp16</option><option>q4f16</option></select></label>
+  <label>Input <select id="res"><option>518x294</option><option>924x518</option></select></label>
+  <label>Depth <input id="depthAmt" type="range" min="0" max="1.5" step="0.01"></label>
+  <label>Smoothing <input id="ema" type="range" min="0.1" max="1" step="0.05"></label>
+  <label>Depth Hz <input id="hz" type="range" min="2" max="30" step="1"></label>
+  <label>Surfel size <input id="surfScale" type="range" min="0.6" max="4" step="0.05"></label>
+  <label>Edge cut <input id="edge" type="range" min="0" max="0.2" step="0.005" value="0.1"></label>
+  <label>Tilt cut <input id="tilt" type="range" min="0" max="0.9" step="0.05" value="0"></label>
+  <label>Flatten <input id="flatten" type="range" min="0" max="1" step="0.05"></label>
+  <div class="row">
+    <button id="bake">Bake depth</button>
+    <button id="savebake">Save bake</button>
+    <button id="loadbake">Load bake</button>
+    <button id="live">Depth: live</button>
+    <button id="play">Play</button>
+    <button id="sweep">Sweep</button>
+    <button id="flat">Flat</button>
+    <button id="front">Front</button>
+  </div>
+  <div id="stats"></div>
+  <div style="color:#888;margin-top:6px">Drag to orbit (±30°). H hides this panel.</div>
+</div>
+<div id="log"></div>
+<script type="module" src="proto.js"></script>
+</body>
+</html>

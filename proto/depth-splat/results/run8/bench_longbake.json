@@ -1,0 +1,41 @@
+{
+ "started": "2026-09-24T19:31:26.513Z",
+ "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.2 Safari/605.1.15",
+ "dpr": 2,
+ "canvas": [
+  3452,
+  2156
+ ],
+ "css": [
+  1726,
+  1078
+ ],
+ "adapter": {
+  "features": 21
+ },
+ "webgl": "WebGL 2.0",
+ "infer": [],
+ "render": [],
+ "video": [],
+ "longbake": [
+  {
+   "clip": "default30",
+   "durationS": 30,
+   "frames": 450,
+   "step": 2,
+   "bakeMs": 104877,
+   "perFrameMs": 233.1,
+   "inferMed": 201,
+   "memMB": 274.1,
+   "flickerRawPct": 0.105,
+   "flickerSmoothedPct": 0.073,
+   "clipRange": [
+    0,
+    4.703125
+   ]
+  }
+ ],
+ "step": "longbake default30 done",
+ "recordings": [],
+ "finished": "2026-09-24T19:33:25.208Z"
+}

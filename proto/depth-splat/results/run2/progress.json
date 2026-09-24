@@ -1,0 +1,192 @@
+{
+ "started": "2026-09-24T08:30:00.875Z",
+ "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.2 Safari/605.1.15",
+ "dpr": 2,
+ "canvas": [
+  3452,
+  2156
+ ],
+ "css": [
+  1726,
+  1078
+ ],
+ "adapter": {
+  "features": 21
+ },
+ "webgl": "WebGL 2.0",
+ "infer": [
+  {
+   "model": "q4f16",
+   "res": "518x294",
+   "coldLoadMs": 422,
+   "firstRunMs": 115,
+   "inferMed": 119,
+   "inferP90": 125,
+   "inferMin": 83,
+   "preMed": 11
+  },
+  {
+   "model": "q4f16",
+   "res": "924x518",
+   "coldLoadMs": 422,
+   "firstRunMs": 677,
+   "inferMed": 637,
+   "inferP90": 686,
+   "inferMin": 613,
+   "preMed": 13
+  },
+  {
+   "model": "fp16",
+   "res": "518x294",
+   "coldLoadMs": 598,
+   "firstRunMs": 138,
+   "inferMed": 92,
+   "inferP90": 95,
+   "inferMin": 87,
+   "preMed": 11
+  },
+  {
+   "model": "fp16",
+   "res": "924x518",
+   "coldLoadMs": 598,
+   "firstRunMs": 685,
+   "inferMed": 617,
+   "inferP90": 729,
+   "inferMin": 540,
+   "preMed": 18
+  }
+ ],
+ "step": "video ema 1",
+ "render": [
+  {
+   "prim": "points",
+   "N": 97995,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 17,
+   "syncFrameMed": 1,
+   "syncFrameP90": 1,
+   "frames": 180,
+   "sortMed": null,
+   "sortP95": null,
+   "sorts": null
+  },
+  {
+   "prim": "points",
+   "N": 391980,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 18,
+   "syncFrameMed": 1,
+   "syncFrameP90": 2,
+   "frames": 179,
+   "sortMed": null,
+   "sortP95": null,
+   "sorts": null
+  },
+  {
+   "prim": "points",
+   "N": 685965,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 18,
+   "syncFrameMed": 1,
+   "syncFrameP90": 2,
+   "frames": 180,
+   "sortMed": null,
+   "sortP95": null,
+   "sorts": null
+  },
+  {
+   "prim": "surfels",
+   "N": 97995,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 18,
+   "syncFrameMed": 2,
+   "syncFrameP90": 3,
+   "frames": 180,
+   "sortMed": null,
+   "sortP95": null,
+   "sorts": null
+  },
+  {
+   "prim": "surfels",
+   "N": 391980,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 18,
+   "syncFrameMed": 3,
+   "syncFrameP90": 3,
+   "frames": 180,
+   "sortMed": null,
+   "sortP95": null,
+   "sorts": null
+  },
+  {
+   "prim": "surfels",
+   "N": 685965,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 19,
+   "syncFrameMed": 7,
+   "syncFrameP90": 10,
+   "frames": 179,
+   "sortMed": null,
+   "sortP95": null,
+   "sorts": null
+  },
+  {
+   "prim": "sorted",
+   "N": 97995,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 17,
+   "syncFrameMed": 2,
+   "syncFrameP90": 3,
+   "frames": 180,
+   "sortMed": 1,
+   "sortP95": 3,
+   "sorts": 180
+  },
+  {
+   "prim": "sorted",
+   "N": 391980,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 18,
+   "syncFrameMed": 2,
+   "syncFrameP90": 3,
+   "frames": 180,
+   "sortMed": 2,
+   "sortP95": 2,
+   "sorts": 180
+  },
+  {
+   "prim": "sorted",
+   "N": 685965,
+   "fps": 58.8,
+   "frameP50": 17,
+   "frameP95": 60,
+   "syncFrameMed": 3,
+   "syncFrameP90": 5,
+   "frames": 122,
+   "sortMed": 2,
+   "sortP95": 13,
+   "sorts": 120
+  }
+ ],
+ "video": [
+  {
+   "ema": 1,
+   "depthHz": 1.6,
+   "inferMed": 563,
+   "inferP90": 662,
+   "preMed": 13,
+   "postMed": 4,
+   "flickerRawPct": 2.286,
+   "flickerShownPct": 2.286,
+   "renderFps": 58.8
+  }
+ ]
+}
