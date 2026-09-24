@@ -35,3 +35,8 @@ Open http://127.0.0.1:8791/ in Safari and keep the window in front (a background
 - `?matched=1&targets=...&edge=|snap=|tilt=|motion=...`: matched-frame tests on ffmpeg frames.
 
 Results POST to `results/`. Full-resolution screenshots, recordings and .pfd sidecars stay local.
+
+- `?bench=1&parts=decodebake&clips=default30`: WebCodecs decode plus bake (needs `media/default30-10s.mp4` and `frames/`). Vendored demuxer: `vendor/mp4box/` (BSD-3).
+- `?eval=1&cfgfile=loops/cfgs_r5.json&tag=x[&dir=frames_luchi&targets=30,90,150]`: objective eval harness (front-view fidelity, hole area, seams). `loops/run_eval.sh <cfg> <tag> [&extra]` runs it in Safari. `?snap=name&yaw=11&pitch=4` saves one screenshot of the page in the Recommended look; `?render=1&start=150&n=300` renders look frames (`rf_NNNN.jpg`) for ffmpeg.
+- Core ML latency (Apple F16 model, coremltools in a venv; downloads the model from Hugging Face first):
+  `python tools/coreml_bench.py frames/f_0270.jpg`

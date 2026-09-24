@@ -36,10 +36,12 @@
   <label>Smoothing <input id="ema" type="range" min="0.1" max="1" step="0.05"></label>
   <label>Depth Hz <input id="hz" type="range" min="2" max="30" step="1"></label>
   <label>Surfel size <input id="surfScale" type="range" min="0.6" max="4" step="0.05"></label>
-  <label>Edge cut <input id="edge" type="range" min="0" max="0.2" step="0.005" value="0.1"></label>
+  <label>Edge cut <input id="edge" type="range" min="0" max="0.3" step="0.005" value="0.2"></label>
   <label>Tilt cut <input id="tilt" type="range" min="0" max="0.9" step="0.05" value="0"></label>
   <label>Flatten <input id="flatten" type="range" min="0" max="1" step="0.05"></label>
   <div class="row">
+    <button id="reco">Recommended</button>
+    <button id="fill">Fill: off</button>
     <button id="bake">Bake depth</button>
     <button id="savebake">Save bake</button>
     <button id="loadbake">Load bake</button>
@@ -50,7 +52,7 @@
     <button id="front">Front</button>
   </div>
   <div id="stats"></div>
-  <div style="color:#888;margin-top:6px">Drag to orbit (±30°). H hides this panel.</div>
+  <div style="color:#888;margin-top:6px">Drag to orbit (Recommended limits ±15° / ±6°). H hides this panel.</div>
 </div>
 <div id="log"></div>
 <script type="module" src="proto.js"></script>

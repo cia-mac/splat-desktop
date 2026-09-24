@@ -1,0 +1,83 @@
+{
+ "targets": [
+  30,
+  270,
+  570,
+  690,
+  810
+ ],
+ "frames": 35,
+ "inferMed": 44,
+ "range": [
+  0,
+  4.53515625
+ ],
+ "shots": [
+  {
+   "F": 30,
+   "motionPixelPct": {},
+   "tiltCulledPct": {},
+   "culledPct": {},
+   "edgePct": 1.16
+  },
+  {
+   "F": 270,
+   "motionPixelPct": {},
+   "tiltCulledPct": {},
+   "culledPct": {},
+   "edgePct": 1
+  },
+  {
+   "F": 570,
+   "motionPixelPct": {},
+   "tiltCulledPct": {},
+   "culledPct": {},
+   "edgePct": 1.06
+  },
+  {
+   "F": 690,
+   "motionPixelPct": {},
+   "tiltCulledPct": {},
+   "culledPct": {},
+   "edgePct": 0.99
+  },
+  {
+   "F": 810,
+   "motionPixelPct": {},
+   "tiltCulledPct": {},
+   "culledPct": {},
+   "edgePct": 1.19
+  }
+ ],
+ "syncMs": {
+  "e1_edge010": [
+   2,
+   2,
+   2,
+   2,
+   2
+  ],
+  "e2_edge015": [
+   2,
+   1,
+   1,
+   1,
+   1
+  ],
+  "e3_edge020": [
+   2,
+   1,
+   1,
+   2,
+   1
+  ],
+  "e4_edge030": [
+   2,
+   1,
+   2,
+   1,
+   2
+  ]
+ },
+ "step": "matched F810"
+}

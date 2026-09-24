@@ -1,0 +1,64 @@
+{
+ "started": "2026-09-24T22:29:48.511Z",
+ "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.2 Safari/605.1.15",
+ "dpr": 2,
+ "canvas": [
+  3452,
+  2080
+ ],
+ "css": [
+  1726,
+  1040
+ ],
+ "adapter": {
+  "features": 21
+ },
+ "webgl": "WebGL 2.0",
+ "infer": [
+  {
+   "model": "q4f16",
+   "res": "518x294",
+   "coldLoadMs": 202,
+   "firstRunMs": 64,
+   "inferMed": 46,
+   "inferP90": 47,
+   "inferMin": 45,
+   "preMed": 5
+  },
+  {
+   "model": "q4f16",
+   "res": "924x518",
+   "coldLoadMs": 202,
+   "firstRunMs": 252,
+   "inferMed": 227,
+   "inferP90": 231,
+   "inferMin": 226,
+   "preMed": 6
+  },
+  {
+   "model": "fp16",
+   "res": "518x294",
+   "coldLoadMs": 210,
+   "firstRunMs": 53,
+   "inferMed": 39,
+   "inferP90": 40,
+   "inferMin": 38,
+   "preMed": 4
+  },
+  {
+   "model": "fp16",
+   "res": "924x518",
+   "coldLoadMs": 210,
+   "firstRunMs": 218,
+   "inferMed": 211,
+   "inferP90": 214,
+   "inferMin": 209,
+   "preMed": 7
+  }
+ ],
+ "step": "infer fp16 924x518",
+ "render": [],
+ "video": [],
+ "recordings": [],
+ "finished": "2026-09-24T22:29:56.385Z"
+}

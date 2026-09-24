@@ -1,0 +1,114 @@
+{
+ "started": "2026-09-24T23:05:38.312Z",
+ "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.2 Safari/605.1.15",
+ "dpr": 2,
+ "canvas": [
+  3452,
+  1996
+ ],
+ "css": [
+  1726,
+  998
+ ],
+ "adapter": {
+  "features": 21
+ },
+ "webgl": "WebGL 2.0",
+ "infer": [],
+ "render": [],
+ "video": [],
+ "streambake": {
+  "stream": {
+   "frames": 150,
+   "step": 2,
+   "bakeMs": 6096,
+   "perFrameMs": 40.6,
+   "inferMed": 39,
+   "smoothed": false,
+   "memMB": 22.8,
+   "quantized": true,
+   "flickerRawPct": 0.734,
+   "flickerSmoothedPct": 0.475,
+   "clipRange": [
+    0,
+    4.7109375
+   ],
+   "decode": {
+    "codec": "avc1.64001f",
+    "w": 1280,
+    "h": 720,
+    "samples": 300,
+    "tsBad": 0,
+    "order": 0,
+    "kept": 150,
+    "queueMax": 10,
+    "firstTs": [
+     66666,
+     100000,
+     133333,
+     166666
+    ],
+    "timescale": 15360,
+    "firstCts": [
+     1024,
+     2048,
+     1536,
+     3584
+    ],
+    "frames": 300,
+    "decodeMs": 6095,
+    "fps": 49.2
+   },
+   "sha256": "0ae0c94d4bd6989552e366c6a23ab4ec2661991a1b2ae85f4cc0b8f67977f296"
+  },
+  "inMemory": {
+   "bakeMs": 5967,
+   "frames": 150,
+   "decodeMs": 597
+  },
+  "streamVsMemory": {
+   "frames": [
+    150,
+    150
+   ],
+   "maxAbsDiff": 0
+  },
+  "pfd2": {
+   "fileMB": 22.8,
+   "load": {
+    "format": "PFD2",
+    "bytes": 22845363,
+    "fetchMs": 11,
+    "decodeMs": 0,
+    "frames": 150,
+    "w": 518,
+    "h": 294,
+    "step": 2
+   },
+   "quantMaxErr": 0,
+   "shaMatchLoaded": true,
+   "wrongHashRejected": true,
+   "rejectMsg": "PFD2 source hash mismatch: file 0ae0c94d4bd6, expected 000000000000",
+   "tsBad": 0,
+   "firstTs": [
+    66666,
+    133333,
+    200000
+   ],
+   "meta": {
+    "sha256": "0ae0c94d4bd6989552e366c6a23ab4ec2661991a1b2ae85f4cc0b8f67977f296",
+    "sourceBytes": 1146175,
+    "sourceName": "media/default-10s.mp4",
+    "decoder": "webcodecs",
+    "model": "fp16",
+    "modelFile": "model_fp16.onnx",
+    "input": "518x294",
+    "normalize": "clip p2-p98",
+    "smoothed": false,
+    "created": "2026-09-24T23:05:51.532Z",
+    "encoder": "depth-splat proto"
+   }
+  }
+ },
+ "step": "streambake done"
+}

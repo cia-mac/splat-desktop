@@ -7,3 +7,4 @@ frames/
 results/run*/**/*.jpg
 results/run*/*.jpg
 media/*.mp4
+frames_*/
