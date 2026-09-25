@@ -751,8 +751,6 @@ function bindUI() {
   document.getElementById('live').onclick = () => { baked.active = !baked.active && !!baked.frames; document.getElementById('live').textContent = baked.active ? 'Depth: baked' : 'Depth: live'; };
   document.getElementById('tilt').oninput = e => { U.uTilt.value = +e.target.value; syncOutputs(); };
   document.getElementById('edge').oninput = e => { U.uEdge.value = +e.target.value; syncOutputs(); };
-  document.getElementById('fillmode').value = FILL;
-  document.getElementById('fillmode').onchange = e => { FILL = e.target.value; if (bgOn) computeBg(); };
   document.getElementById('fill').onclick = () => { bgOn = !bgOn; if (bgOn) computeBg(); syncUI(); };
   document.getElementById('reco').onclick = applyRecommended;
   document.getElementById('play').onclick = () => { S.playing = !S.playing; S.playing ? video.play() : video.pause(); syncUI(); };
@@ -1137,7 +1135,6 @@ function farthestLayer(d, rgb, w, h, R) {
 // Same layer at 1/f resolution (nearest subsample, window R/f), returned at the reduced size.
 // The bg layer is soft and only ever sampled in UV space, so the smaller texture is a drop-in.
 function farthestLayerFast(d, rgb, w, h, R, f = 2) {
-  if (FILL === 'inpaint') return inpaintLayer(d, rgb, w, h, R, Math.max(1, f), +(Q.get('fillT') || 0.35), +(Q.get('fillDil') ?? 1));
   if (f <= 1) return { ...farthestLayer(d, rgb, w, h, R), w, h };
   const wd = Math.ceil(w / f), hd = Math.ceil(h / f), dd = new Float32Array(wd * hd), rd = new Uint8Array(wd * hd * 4);
   for (let y = 0; y < hd; y++) for (let x = 0; x < wd; x++) {
@@ -1147,69 +1144,6 @@ function farthestLayerFast(d, rgb, w, h, R, f = 2) {
   return { ...farthestLayer(dd, rd, wd, hd, Math.max(1, Math.round(R / f))), w: wd, h: hd };
 }
 
-
-// Fill v3, "inpainted second layer": start from the same window as farthestLayer, but instead of
-// copying the far pixel's color and depth across the whole hole (which streaks), mark every pixel that
-// is clearly nearer than the far side of its window as foreground, drop it, and fill it by push-pull
-// diffusion from the remaining background pixels (colour AND depth). The result is a smooth layer
-// that continues the background behind the subject.
-function pushPull(v, wt, w, h, C) {
-  const L = [{ w, h, v, wt }];
-  while (L[L.length - 1].w > 1 || L[L.length - 1].h > 1) {
-    const a = L[L.length - 1], w2 = Math.ceil(a.w / 2), h2 = Math.ceil(a.h / 2);
-    const v2 = new Float32Array(w2 * h2 * C), wt2 = new Float32Array(w2 * h2);
-    for (let y = 0; y < h2; y++) for (let x = 0; x < w2; x++) {
-      let sw = 0, n = 0; const acc = new Array(C).fill(0);
-      for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) {
-        const xx = 2 * x + dx, yy = 2 * y + dy; if (xx >= a.w || yy >= a.h) continue;
-        const i = yy * a.w + xx; n++; const q = a.wt[i]; if (q <= 0) continue;
-        sw += q; for (let c = 0; c < C; c++) acc[c] += a.v[i * C + c] * q;
-      }
-      const o = y * w2 + x; wt2[o] = n ? sw / n : 0;
-      if (sw > 0) for (let c = 0; c < C; c++) v2[o * C + c] = acc[c] / sw;
-    }
-    L.push({ w: w2, h: h2, v: v2, wt: wt2 });
-  }
-  for (let l = L.length - 2; l >= 0; l--) {
-    const a = L[l], b = L[l + 1];
-    for (let y = 0; y < a.h; y++) for (let x = 0; x < a.w; x++) {
-      const i = y * a.w + x, q = Math.min(1, a.wt[i]); if (q >= 1) continue;
-      const fx = Math.min(b.w - 1, Math.max(0, (x + 0.5) / 2 - 0.5)), fy = Math.min(b.h - 1, Math.max(0, (y + 0.5) / 2 - 0.5));
-      const x0 = Math.floor(fx), y0 = Math.floor(fy), x1 = Math.min(b.w - 1, x0 + 1), y1 = Math.min(b.h - 1, y0 + 1), tx = fx - x0, ty = fy - y0;
-      for (let c = 0; c < C; c++) {
-        const up = (b.v[(y0 * b.w + x0) * C + c] * (1 - tx) + b.v[(y0 * b.w + x1) * C + c] * tx) * (1 - ty) + (b.v[(y1 * b.w + x0) * C + c] * (1 - tx) + b.v[(y1 * b.w + x1) * C + c] * tx) * ty;
-        a.v[i * C + c] = q * a.v[i * C + c] + (1 - q) * up;
-      }
-      a.wt[i] = 1;
-    }
-  }
-  return L[0].v;
-}
-function inpaintLayer(d, rgb, w, h, R, f = 2, T = 0.10, dil = 1) {
-  const wd = Math.ceil(w / f), hd = Math.ceil(h / f), dd = new Float32Array(wd * hd), rd = new Uint8Array(wd * hd * 4);
-  for (let y = 0; y < hd; y++) for (let x = 0; x < wd; x++) {
-    const j = Math.min(h - 1, y * f) * w + Math.min(w - 1, x * f), i = y * wd + x;
-    dd[i] = d[j]; rd[4 * i] = rgb[4 * j]; rd[4 * i + 1] = rgb[4 * j + 1]; rd[4 * i + 2] = rgb[4 * j + 2]; rd[4 * i + 3] = 255;
-  }
-  const far = farthestLayer(dd, rd, wd, hd, Math.max(1, Math.round(R / f))).bd;
-  const fg = new Uint8Array(wd * hd);
-  for (let i = 0; i < wd * hd; i++) fg[i] = dd[i] > far[i] + T ? 1 : 0;
-  const wt = new Float32Array(wd * hd), v = new Float32Array(wd * hd * 4);
-  for (let y = 0; y < hd; y++) for (let x = 0; x < wd; x++) {
-    let bad = 0;
-    for (let yy = Math.max(0, y - dil); yy <= Math.min(hd - 1, y + dil) && !bad; yy++)
-      for (let xx = Math.max(0, x - dil); xx <= Math.min(wd - 1, x + dil); xx++) if (fg[yy * wd + xx]) { bad = 1; break; }
-    const i = y * wd + x; wt[i] = bad ? 0 : 1;
-    v[4 * i] = rd[4 * i]; v[4 * i + 1] = rd[4 * i + 1]; v[4 * i + 2] = rd[4 * i + 2]; v[4 * i + 3] = dd[i];
-  }
-  let any = 0; for (let i = 0; i < wt.length; i++) any += wt[i];
-  if (!any) return { ...farthestLayer(dd, rd, wd, hd, Math.max(1, Math.round(R / f))), w: wd, h: hd };
-  const out = pushPull(v, wt, wd, hd, 4);
-  const bd = new Float32Array(wd * hd), bc = new Uint8Array(wd * hd * 4);
-  for (let i = 0; i < wd * hd; i++) { bc[4 * i] = out[4 * i]; bc[4 * i + 1] = out[4 * i + 1]; bc[4 * i + 2] = out[4 * i + 2]; bc[4 * i + 3] = 255; bd[i] = out[4 * i + 3]; }
-  return { bd, bc, w: wd, h: hd };
-}
-let FILL = Q.get('fill') || 'far';   // 'far' = copy the farthest pixel; 'inpaint' = drop the foreground and diffuse the background in
 
 // Box blur of an RGBA8 map (alpha untouched), separable, `passes` times: softens the fill's striping.
 function blurRGBA(bc, w, h, r, passes = 2) {
@@ -1540,7 +1474,7 @@ async function gallery() {
     const nd = new Float32Array(a.length); for (let k = 0; k < nd.length; k++) nd[k] = Math.min(1, Math.max(0, (a[k] - lo) / (hi - lo)));
     tex.image = im; tex.needsUpdate = true; disp.set(nd); depthTex.needsUpdate = true; depthVersion++;
     pushSortDepth();   // the sort worker keeps its own copy; without this Blobs/Dots sort on stale depth
-    const tbg = now(); const { bd, bc, w: bw, h: bh } = farthestLayerFast(nd, rgbAt(im, dW, dH), dW, dH, 40, S.bgDown); (ms.fillMs = ms.fillMs || []).push(r1(now() - tbg));
+    const { bd, bc, w: bw, h: bh } = farthestLayerFast(nd, rgbAt(im, dW, dH), dW, dH, 40, S.bgDown);
     if (bgDepthTex) bgDepthTex.dispose(); if (bgColorTex) bgColorTex.dispose();
     bgDepthTex = new THREE.DataTexture(bd, bw, bh, THREE.RedFormat, THREE.FloatType);
     bgColorTex = new THREE.DataTexture(bc, bw, bh, THREE.RGBAFormat, THREE.UnsignedByteType);
