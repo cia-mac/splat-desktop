@@ -157,16 +157,12 @@ async function updateDepth(resetClip) {
   prevRaw = raw; prevDisp = true;
   depthTex.needsUpdate = true;
   depthVersion++;
-  pushSortDepth();
+  sortWorker.postMessage({ depth: disp.slice(), dW, dH });
   if (bgOn) computeBg();
   depthStats.inf.push(r.inf); depthStats.pre.push(r.pre); depthStats.post.push(now() - t0);
   depthBusy = false;
 }
 
-
-// The sort worker keeps its own copy of the depth map; it must be sent again whenever the
-// map changes while a sorted primitive is not showing, or the first sort uses a stale one.
-function pushSortDepth() { sortWorker.postMessage({ depth: disp.slice(), dW, dH }); }
 
 /* ═══════════ bake on import ═══════════ */
 // Depth for every Nth frame, computed once with the clip paused frame by frame.
@@ -402,7 +398,7 @@ function applyBaked() {
   const k255 = baked.q ? 1 / 255 : 1;
   for (let i = 0; i < disp.length; i++) disp[i] = (A[i] + (B[i] - A[i]) * a) * k255;
   depthTex.needsUpdate = true; depthVersion++;
-  if (/sorted/.test(S.prim)) pushSortDepth();
+  if (/sorted/.test(S.prim)) sortWorker.postMessage({ depth: disp.slice(), dW, dH });
   if (bgOn) computeBg();
 }
 
@@ -413,7 +409,7 @@ const U = {
   uTime: { value: 0 }, uTurb: { value: 1 }, uVidH: { value: vidH }, uFocal: { value: 1000 },
   uPR: { value: 1 }, uSpread: { value: 0.6 }, uSurfScale: { value: S.surfScale }, uFlatten: { value: S.flatten },
   uGauss: { value: S.gauss }, uEps: { value: S.eps }, uOpacity: { value: 0.55 }, uBright: { value: 2.4 },
-  uSortAlpha: { value: S.sortAlpha }, uSortGauss: { value: S.sortGauss }, uEdge: { value: 0.2 }, uNFloor: { value: +(Q.get('nfloor') ?? 1) }, uTilt: { value: 0 }, uMotion: { value: null }, uMotionT: { value: 0 }, uDepthBg: { value: null }, uColorBg: { value: null }, uBgPush: { value: 0.1 }, uBgScale: { value: 2 }, uCov: { value: 3 },
+  uSortAlpha: { value: S.sortAlpha }, uSortGauss: { value: S.sortGauss }, uEdge: { value: 0.2 }, uTilt: { value: 0 }, uMotion: { value: null }, uMotionT: { value: 0 }, uDepthBg: { value: null }, uColorBg: { value: null }, uBgPush: { value: 0.1 }, uBgScale: { value: 2 }, uCov: { value: 3 },
 };
 
 const COMMON = /* glsl */`
@@ -481,7 +477,7 @@ const pointsMat = new THREE.ShaderMaterial({
 });
 
 const SURF_VS = COMMON + /* glsl */`
-  uniform float uNFloor, uSurfScale, uFlatten, uEps, uEdge, uTilt, uMotionT, uBgPush, uBgScale;
+  uniform float uSurfScale, uFlatten, uEps, uEdge, uTilt, uMotionT, uBgPush, uBgScale;
   uniform sampler2D uMotion;
   in float aIdx; out vec2 vQ;
   float dAt(vec2 t) { return texture(DEPTHMAP, clamp(t, 0.0, 1.0)).r; }
@@ -503,12 +499,8 @@ const SURF_VS = COMMON + /* glsl */`
       if (g > uEdge) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); vQ = vec2(2.0); vCol = vec3(0.0); return; }
     }
     #endif
-    // Normals difference the depth map one cell either side. On a grid finer than the
-    // depth map that reads the same texel twice (flat) or straddles a texel step (spike),
-    // so the offset never goes below one depth texel.
-    vec2 nOff = mix(vec2(du, dv), max(vec2(du, dv), 1.0 / vec2(textureSize(DEPTHMAP, 0))), uNFloor);
-    vec3 tx = liftTop(mT + vec2(nOff.x, 0.0)) - liftTop(mT - vec2(nOff.x, 0.0));
-    vec3 ty = liftTop(mT - vec2(0.0, nOff.y)) - liftTop(mT + vec2(0.0, nOff.y));
+    vec3 tx = liftTop(mT + vec2(du, 0.0)) - liftTop(mT - vec2(du, 0.0));
+    vec3 ty = liftTop(mT - vec2(0.0, dv)) - liftTop(mT + vec2(0.0, dv));
     vec3 n = normalize(cross(tx, ty));
     // Tilt fade: a smooth depth ramp (motion-blurred thin object) shows up as a surfel
     // turned almost edge-on to the original camera. Drop it when n.z < uTilt.
@@ -714,18 +706,14 @@ const LOOK_DEFS = {
   dots:   () => { S.prim = 'sorted'; S.surfScale = 1.0; U.uSortGauss.value = 1.5; U.uSortAlpha.value = 1.0; bgOn = false; },
 };
 let curLook = 'blend';
-function setLook(name) {
-  curLook = name; LOOK_DEFS[name](); U.uSurfScale.value = S.surfScale; lastSortKey = '';
-  if (/sorted/.test(S.prim) && disp) pushSortDepth();   // paused on a frame: the worker may hold an older depth
-  syncUI();
-}
+function setLook(name) { curLook = name; LOOK_DEFS[name](); U.uSurfScale.value = S.surfScale; lastSortKey = ''; syncUI(); }
 function syncOutputs() {
   const src = { surfScale: S.surfScale, depthAmt: S.depthAmt, hz: S.hz, ema: S.ema, flatten: S.flatten, edge: U.uEdge.value, tilt: U.uTilt.value };
   document.querySelectorAll('[data-out]').forEach(o => { const v = src[o.dataset.out]; if (v !== undefined) o.textContent = (+v).toFixed(o.dataset.out === 'hz' ? 0 : 2); });
 }
 function bindUI() {
   document.querySelectorAll('#looks button').forEach(b => b.onclick = () => setLook(b.dataset.look));
-  document.querySelectorAll('#prims button').forEach(b => b.onclick = () => { S.prim = b.dataset.prim; lastSortKey = ''; if (/sorted/.test(S.prim)) pushSortDepth(); syncUI(); });
+  document.querySelectorAll('#prims button').forEach(b => b.onclick = () => { S.prim = b.dataset.prim; syncUI(); });
   document.getElementById('K').onchange = e => { S.K = +e.target.value; build(); };
   document.getElementById('grid').value = COLS;
   document.getElementById('grid').onchange = e => setGrid(+e.target.value);
@@ -1465,7 +1453,7 @@ async function gallery() {
   const looks = (Q.get('looks') || 'blend,blobs,dots').split(',');
   setRes('518x294');
   const W = +(Q.get('w') || 1280), H = Math.round(W * 9 / 16);
-  renderer.setPixelRatio(1); renderer.setSize(W, H, false); camera.aspect = W / H; camera.zoom = 1; camera.updateProjectionMatrix(); rt.setSize(W, H); U.uPR.value = 1; U.uFocal.value = (H / 2) / Math.tan(THREE.MathUtils.degToRad(FOV / 2));
+  renderer.setPixelRatio(1); renderer.setSize(W, H, false); camera.aspect = W / H; camera.updateProjectionMatrix(); rt.setSize(W, H); U.uPR.value = 1;
   ensureDepthTex(); baked.active = false; S.playing = false; video.pause();
   S.K = 1; S.sweep = false; S.depthAmt = 0.8; U.uTurb.value = 0; U.uEdge.value = 0.2; U.uTilt.value = 0; U.uMotionT.value = 0;
   const tex = new THREE.Texture(); tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.generateMipmaps = false; U.uVideo.value = tex;
@@ -1477,7 +1465,6 @@ async function gallery() {
     const lo = tmp[Math.floor(tmp.length * 0.02)], hi = tmp[Math.floor(tmp.length * 0.98)];
     const nd = new Float32Array(a.length); for (let k = 0; k < nd.length; k++) nd[k] = Math.min(1, Math.max(0, (a[k] - lo) / (hi - lo)));
     tex.image = im; tex.needsUpdate = true; disp.set(nd); depthTex.needsUpdate = true; depthVersion++;
-    pushSortDepth();   // the sort worker keeps its own copy; without this Blobs/Dots sort on stale depth
     const { bd, bc, w: bw, h: bh } = farthestLayerFast(nd, rgbAt(im, dW, dH), dW, dH, 40, S.bgDown);
     if (bgDepthTex) bgDepthTex.dispose(); if (bgColorTex) bgColorTex.dispose();
     bgDepthTex = new THREE.DataTexture(bd, bw, bh, THREE.RedFormat, THREE.FloatType);
