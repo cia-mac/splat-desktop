@@ -177,6 +177,12 @@ Frame timing, same session: sweep on, baked depth, DPR 2, canvas 3452x2080. Read
 - Sorting takes 4 to 6 ms at 392k to 697k keys. This replaces the old "2 to 3 ms at 98k" figure.
 - "infer 381 ms" in the stats is a single cold boot inference, not comparable with v12's warm 39 ms.
 
+## 10. Gallery sort bug fixed (2026-09-25, uncommitted)
+
+Fix in `proto.js`: `gallery()` now posts the frame's depth to the sort worker (`sortWorker.postMessage({ depth: ... })`) after each inference, and `setLook()` posts the current depth when switching to a sorted look, which covers the paused-on-a-frame case in the live page. Pre-fix copy: `proto_v_2026-09-25_pre_sortfix.js`.
+
+Check: `?gallery=1&frames=270&grids=417&looks=blobs&w=1280`, compared with the old run29 image of the same frame (`results/run33/sortfix_old_vs_new.png`, left old, right new). Mean absolute difference 32/255, 38.7% of pixels differ by more than 30, so the stale sort was materially wrong. In the new image the banana correctly sits in front of the face; in the old one it is partly occluded. The other run29/run30 Blobs and Dots images remain invalid until re-rendered. One frame, one grid, Safari only.
+
 ## Open items for Cia
 
 1. Done 2026-09-25 (section 9). The Developer settings in Safari can be switched back off; they are no longer needed. "Allow unsigned extensions" especially should go back off.

@@ -157,16 +157,12 @@ async function updateDepth(resetClip) {
   prevRaw = raw; prevDisp = true;
   depthTex.needsUpdate = true;
   depthVersion++;
-  pushSortDepth();
+  sortWorker.postMessage({ depth: disp.slice(), dW, dH });
   if (bgOn) computeBg();
   depthStats.inf.push(r.inf); depthStats.pre.push(r.pre); depthStats.post.push(now() - t0);
   depthBusy = false;
 }
 
-
-// The sort worker keeps its own copy of the depth map; it must be sent again whenever the
-// map changes while a sorted primitive is not showing, or the first sort uses a stale one.
-function pushSortDepth() { sortWorker.postMessage({ depth: disp.slice(), dW, dH }); }
 
 /* ═══════════ bake on import ═══════════ */
 // Depth for every Nth frame, computed once with the clip paused frame by frame.
@@ -402,7 +398,7 @@ function applyBaked() {
   const k255 = baked.q ? 1 / 255 : 1;
   for (let i = 0; i < disp.length; i++) disp[i] = (A[i] + (B[i] - A[i]) * a) * k255;
   depthTex.needsUpdate = true; depthVersion++;
-  if (/sorted/.test(S.prim)) pushSortDepth();
+  if (/sorted/.test(S.prim)) sortWorker.postMessage({ depth: disp.slice(), dW, dH });
   if (bgOn) computeBg();
 }
 
@@ -710,18 +706,14 @@ const LOOK_DEFS = {
   dots:   () => { S.prim = 'sorted'; S.surfScale = 1.0; U.uSortGauss.value = 1.5; U.uSortAlpha.value = 1.0; bgOn = false; },
 };
 let curLook = 'blend';
-function setLook(name) {
-  curLook = name; LOOK_DEFS[name](); U.uSurfScale.value = S.surfScale; lastSortKey = '';
-  if (/sorted/.test(S.prim) && disp) pushSortDepth();   // paused on a frame: the worker may hold an older depth
-  syncUI();
-}
+function setLook(name) { curLook = name; LOOK_DEFS[name](); U.uSurfScale.value = S.surfScale; lastSortKey = ''; syncUI(); }
 function syncOutputs() {
   const src = { surfScale: S.surfScale, depthAmt: S.depthAmt, hz: S.hz, ema: S.ema, flatten: S.flatten, edge: U.uEdge.value, tilt: U.uTilt.value };
   document.querySelectorAll('[data-out]').forEach(o => { const v = src[o.dataset.out]; if (v !== undefined) o.textContent = (+v).toFixed(o.dataset.out === 'hz' ? 0 : 2); });
 }
 function bindUI() {
   document.querySelectorAll('#looks button').forEach(b => b.onclick = () => setLook(b.dataset.look));
-  document.querySelectorAll('#prims button').forEach(b => b.onclick = () => { S.prim = b.dataset.prim; lastSortKey = ''; if (/sorted/.test(S.prim)) pushSortDepth(); syncUI(); });
+  document.querySelectorAll('#prims button').forEach(b => b.onclick = () => { S.prim = b.dataset.prim; syncUI(); });
   document.getElementById('K').onchange = e => { S.K = +e.target.value; build(); };
   document.getElementById('grid').value = COLS;
   document.getElementById('grid').onchange = e => setGrid(+e.target.value);
@@ -1473,7 +1465,6 @@ async function gallery() {
     const lo = tmp[Math.floor(tmp.length * 0.02)], hi = tmp[Math.floor(tmp.length * 0.98)];
     const nd = new Float32Array(a.length); for (let k = 0; k < nd.length; k++) nd[k] = Math.min(1, Math.max(0, (a[k] - lo) / (hi - lo)));
     tex.image = im; tex.needsUpdate = true; disp.set(nd); depthTex.needsUpdate = true; depthVersion++;
-    pushSortDepth();   // the sort worker keeps its own copy; without this Blobs/Dots sort on stale depth
     const { bd, bc, w: bw, h: bh } = farthestLayerFast(nd, rgbAt(im, dW, dH), dW, dH, 40, S.bgDown);
     if (bgDepthTex) bgDepthTex.dispose(); if (bgColorTex) bgColorTex.dispose();
     bgDepthTex = new THREE.DataTexture(bd, bw, bh, THREE.RedFormat, THREE.FloatType);
