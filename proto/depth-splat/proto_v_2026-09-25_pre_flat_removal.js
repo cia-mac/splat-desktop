@@ -704,6 +704,7 @@ const LOOK_DEFS = {
   blend:  () => { S.prim = 'surfels'; S.surfScale = 2.4; U.uGauss.value = 1.0; bgOn = true; computeBg(); },
   blobs:  () => { S.prim = 'sorted'; S.surfScale = 1.8; U.uSortGauss.value = 2.5; U.uSortAlpha.value = 1.0; bgOn = false; },
   dots:   () => { S.prim = 'sorted'; S.surfScale = 1.0; U.uSortGauss.value = 1.5; U.uSortAlpha.value = 1.0; bgOn = false; },
+  points: () => { S.prim = 'points'; bgOn = false; },
 };
 let curLook = 'blend';
 function setLook(name) { curLook = name; LOOK_DEFS[name](); U.uSurfScale.value = S.surfScale; lastSortKey = ''; syncUI(); }
@@ -757,7 +758,7 @@ function bindUI() {
     else if (k === ' ') { e.preventDefault(); document.getElementById('play').click(); }
     else if (k === 's') document.getElementById('sweep').click();
     else if (k === 'f') document.getElementById('front').click();
-    else if ('123'.includes(k) && k) setLook(['blend', 'blobs', 'dots'][+k - 1]);
+    else if ('1234'.includes(k) && k) setLook(['blend', 'blobs', 'dots', 'points'][+k - 1]);
   });
   let drag = null;
   canvas.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, yaw: S.yaw, pitch: S.pitch }; S.sweep = false; syncUI(); canvas.setPointerCapture(e.pointerId); });
