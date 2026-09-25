@@ -1,0 +1,61 @@
+{
+ "started": "2026-09-24T22:30:06.302Z",
+ "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.2 Safari/605.1.15",
+ "dpr": 2,
+ "canvas": [
+  3452,
+  2080
+ ],
+ "css": [
+  1726,
+  1040
+ ],
+ "adapter": {
+  "features": 21
+ },
+ "webgl": "WebGL 2.0",
+ "infer": [],
+ "render": [],
+ "video": [
+  {
+   "ema": 1,
+   "model": "fp16",
+   "res": "518x294",
+   "depthHz": 13.3,
+   "inferMed": 40,
+   "inferP90": 41,
+   "preMed": 5,
+   "postMed": 1,
+   "flickerRawPct": 0.695,
+   "flickerShownPct": 0.695,
+   "renderFps": 58.8
+  },
+  {
+   "ema": 0.5,
+   "model": "fp16",
+   "res": "518x294",
+   "depthHz": 13.5,
+   "inferMed": 40,
+   "inferP90": 41,
+   "preMed": 6,
+   "postMed": 2,
+   "flickerRawPct": 0.652,
+   "flickerShownPct": 0.428,
+   "renderFps": 58.8
+  },
+  {
+   "ema": 0.3,
+   "model": "fp16",
+   "res": "518x294",
+   "depthHz": 13.3,
+   "inferMed": 40,
+   "inferP90": 41,
+   "preMed": 7,
+   "postMed": 2,
+   "flickerRawPct": 0.673,
+   "flickerShownPct": 0.332,
+   "renderFps": 58.8
+  }
+ ],
+ "step": "video ema 0.3"
+}

@@ -1,0 +1,84 @@
+{
+ "targets": [
+  30,
+  270,
+  570,
+  690,
+  810
+ ],
+ "out": [
+  {
+   "edge": 0.1,
+   "fill": 1,
+   "surf": 2.4,
+   "gauss": 1,
+   "push": 0.1,
+   "flat": 0.5,
+   "bgScale": 2,
+   "cov": 3,
+   "down": 1,
+   "madFront": 2.456,
+   "psnrFront": 30.65,
+   "hole15": 0.038,
+   "dark15": 0.038,
+   "dots15": 0.0005,
+   "seam15": 0.0208
+  },
+  {
+   "edge": 0.1,
+   "fill": 1,
+   "surf": 2.4,
+   "gauss": 1,
+   "push": 0.1,
+   "flat": 0.5,
+   "bgScale": 2,
+   "cov": 3,
+   "down": 2,
+   "madFront": 2.453,
+   "psnrFront": 30.73,
+   "hole15": 0.041,
+   "dark15": 0.041,
+   "dots15": 0.0006,
+   "seam15": 0.0204
+  },
+  {
+   "edge": 0.1,
+   "fill": 1,
+   "surf": 2.4,
+   "gauss": 1,
+   "push": 0.1,
+   "flat": 0.5,
+   "bgScale": 2,
+   "cov": 3,
+   "down": 4,
+   "madFront": 2.459,
+   "psnrFront": 30.65,
+   "hole15": 0.052,
+   "dark15": 0.052,
+   "dots15": 0.0013,
+   "seam15": 0.0209
+  },
+  {
+   "edge": 0.1,
+   "fill": 0,
+   "surf": 2.4,
+   "gauss": 1,
+   "push": 0.1,
+   "flat": 0.5,
+   "bgScale": 2,
+   "cov": 3,
+   "down": 1,
+   "madFront": 3.814,
+   "psnrFront": 22.25,
+   "hole15": 9.827,
+   "dark15": 9.827,
+   "dots15": 0.0369,
+   "seam15": 0.0089
+  }
+ ],
+ "bgMs": {
+  "1": 16,
+  "2": 3,
+  "4": 1
+ }
+}

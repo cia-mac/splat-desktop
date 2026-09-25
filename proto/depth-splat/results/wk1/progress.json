@@ -1,0 +1,19 @@
+{
+ "started": "2026-09-24T08:54:40.826Z",
+ "ua": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko)",
+ "dpr": 2,
+ "canvas": [
+  3200,
+  1800
+ ],
+ "css": [
+  1600,
+  900
+ ],
+ "adapter": {
+  "features": 18
+ },
+ "webgl": "WebGL 2.0",
+ "infer": [],
+ "step": "load q4f16"
+}

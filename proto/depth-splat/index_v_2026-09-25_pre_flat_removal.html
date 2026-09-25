@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pointfield depth prototype</title>
+<style>
+/* Same design language as the Pointfield desktop app (ui/style.css). */
+:root {
+  --accent: 140, 170, 255; --glow: 160, 120, 255; --surface: 12, 12, 18;
+  --panel-bg: rgba(16, 16, 22, 0.82); --panel-border: rgba(255, 255, 255, 0.04); --glass-blur: 20px;
+  --text-primary: rgba(255, 255, 255, 0.88); --text-secondary: rgba(255, 255, 255, 0.52); --text-dim: rgba(255, 255, 255, 0.28);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; background: rgb(var(--surface)); overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif; color: #fff; -webkit-font-smoothing: antialiased; }
+canvas { display: block; position: fixed; inset: 0; z-index: 1; width: 100vw; height: 100vh; touch-action: none; cursor: grab; }
+canvas:active { cursor: grabbing; }
+
+#controls { position: fixed; top: 0; right: 0; width: 320px; height: 100%; background: var(--panel-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4); -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  border-left: 1px solid var(--panel-border); z-index: 50; transform: translateX(0);
+  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1); overflow-y: auto; }
+#controls.closed { transform: translateX(320px); }
+#controls::-webkit-scrollbar { width: 3px; }
+#controls::-webkit-scrollbar-track { background: transparent; }
+#controls::-webkit-scrollbar-thumb { background: rgba(var(--accent), 0.1); border-radius: 2px; }
+
+#ctrl-toggle { position: fixed; top: 50%; right: 320px; z-index: 51; transform: translateY(-50%); width: 32px; height: 72px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1); border-radius: 8px 0 0 8px; }
+#ctrl-toggle:hover { background: rgba(var(--accent), 0.06); }
+#controls.closed ~ #ctrl-toggle { right: 0; }
+#ctrl-toggle .arrow { width: 0; height: 0; border-top: 8px solid transparent; border-bottom: 8px solid transparent; border-left: 10px solid rgba(255,255,255,0.18); transition: all 0.3s; }
+#controls:not(.closed) ~ #ctrl-toggle .arrow { border-left: none; border-right: 10px solid rgba(255,255,255,0.18); }
+#ctrl-toggle:hover .arrow { border-left-color: rgba(var(--accent), 0.5); border-right-color: rgba(var(--accent), 0.5); }
+
+#controls-header { padding: 28px 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.03); }
+#controls-header h2 { font-size: 18px; letter-spacing: 3px; color: var(--text-primary); font-weight: 500; }
+#controls-header .subtitle { font-size: 11px; opacity: 0.35; margin-top: 4px; display: block; letter-spacing: 1px; }
+#controls-body { padding: 20px 24px 28px; }
+
+.ctrl-section { margin-bottom: 24px; }
+.ctrl-section h3, summary { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: rgba(var(--accent), 0.4); margin-bottom: 14px; font-weight: 500; }
+summary { cursor: pointer; list-style: none; margin-bottom: 0; }
+summary::-webkit-details-marker { display: none; }
+summary::after { content: '+'; float: right; opacity: .6; }
+details[open] summary::after { content: '\2212'; }
+details[open] summary { margin-bottom: 14px; }
+summary:hover { color: rgba(var(--accent), 0.7); }
+
+.ctrl-row { margin-bottom: 14px; display: flex; flex-wrap: wrap; align-items: center; }
+.ctrl-row label { font-size: 13px; color: var(--text-secondary); flex: 1; font-weight: 400; letter-spacing: 0.2px; }
+.ctrl-row .ctrl-val { font: 400 13px/1 'SF Mono', 'Menlo', monospace; color: var(--text-primary); min-width: 50px; text-align: right; }
+.ctrl-row input[type="range"] { width: 100%; margin-top: 8px; height: 2px; -webkit-appearance: none; appearance: none; background: rgba(255,255,255,0.06); border-radius: 1px; outline: none; }
+.ctrl-row input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: rgb(var(--accent)); cursor: pointer; box-shadow: 0 0 10px rgba(var(--glow), 0.3); transition: box-shadow 0.2s; }
+.ctrl-row input[type="range"]:hover::-webkit-slider-thumb { box-shadow: 0 0 18px rgba(var(--glow), 0.5); }
+.ctrl-row select { background: rgba(255,255,255,0.02); color: var(--text-primary); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; padding: 6px 8px; font: 12px 'SF Mono', 'Menlo', monospace; outline: none; }
+.ctrl-row select:hover { border-color: rgba(var(--accent), 0.2); }
+
+.presets { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
+.presets button, .act { flex: 1; padding: 9px 0; font: 400 11px/1 'SF Mono', 'Menlo', monospace; letter-spacing: 1px; text-transform: uppercase;
+  background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.06); border-radius: 6px; color: var(--text-dim); cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+.presets button:hover, .act:hover { border-color: rgba(var(--accent), 0.2); color: var(--text-secondary); }
+.presets button.on { border-color: rgba(var(--accent), 0.3); color: rgba(var(--accent), 0.8); background: rgba(var(--accent), 0.04); }
+.presets button:disabled { opacity: .5; }
+.presets.tight button { padding: 9px 8px; }
+.act { display: block; width: 100%; margin-top: 4px; padding: 12px 0; letter-spacing: 2px; }
+
+#stats { white-space: pre; font: 11px/1.6 'SF Mono', 'Menlo', monospace; color: var(--text-dim); overflow: hidden; }
+#log { position: fixed; bottom: 16px; left: 18px; right: 340px; z-index: 10; color: var(--text-dim); font: 12px/1.5 'SF Mono', 'Menlo', monospace; letter-spacing: 0.3px; white-space: pre; pointer-events: none; overflow: hidden; }
+#kb-hint { position: fixed; bottom: 16px; right: 340px; z-index: 10; color: var(--text-dim); font: 11px/1.5 'SF Mono', 'Menlo', monospace; transition: right .35s cubic-bezier(0.4,0,0.2,1); }
+#controls.closed ~ #kb-hint { right: 18px; }
+#controls.closed ~ #log { right: 18px; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+
+<div id="controls">
+  <div id="controls-header">
+    <h2>Pointfield</h2>
+    <span class="subtitle">depth prototype</span>
+  </div>
+  <div id="controls-body">
+
+    <div class="ctrl-section">
+      <h3>Look</h3>
+      <div class="presets" id="looks">
+        <button data-look="blend">Blend</button>
+        <button data-look="blobs">Blobs</button>
+        <button data-look="dots">Dots</button>
+        <button data-look="points">Flat</button>
+      </div>
+      <div class="ctrl-row"><label for="grid">Grid</label><select id="grid"><option value="1112">1112 finest (697k)</option><option value="834">834 very fine (392k)</option><option value="626">626 fine (221k)</option><option value="417">417 (98k)</option><option value="278">278</option><option value="208">208</option><option value="139">139</option><option value="104">104 coarse</option></select></div>
+      <div class="ctrl-row"><label for="surfScale">Splat size</label><span class="ctrl-val" data-out="surfScale"></span><input id="surfScale" type="range" min="0.6" max="4" step="0.05"></div>
+      <div class="ctrl-row"><label for="depthAmt">Depth</label><span class="ctrl-val" data-out="depthAmt"></span><input id="depthAmt" type="range" min="0" max="1.5" step="0.01"></div>
+    </div>
+
+    <div class="ctrl-section">
+      <h3>Playback</h3>
+      <div class="presets tight">
+        <button id="play">Play</button>
+        <button id="sweep">Sweep</button>
+        <button id="front">Front</button>
+        <button id="flat">Flat</button>
+        <button id="fill">Fill: off</button>
+      </div>
+      <button class="act" id="reco">Reset</button>
+    </div>
+
+    <div class="ctrl-section"><details>
+      <summary>Depth source</summary>
+      <div class="ctrl-row"><label for="clip">Clip</label><select id="clip"><option value="default">default</option><option value="luchi">luchi</option><option value="claudia">claudia</option></select></div>
+      <div class="presets tight">
+        <button id="bake">Bake depth</button>
+        <button id="live">Depth: live</button>
+        <button id="savebake">Save bake</button>
+        <button id="loadbake">Load bake</button>
+      </div>
+      <div class="ctrl-row"><label for="model">Model</label><select id="model"><option value="fp16">fp16</option><option value="q4f16">q4f16</option></select></div>
+      <div class="ctrl-row"><label for="res">Input</label><select id="res"><option value="518x294">518x294</option><option value="924x518">924x518</option></select></div>
+      <div class="ctrl-row"><label for="hz">Depth Hz</label><span class="ctrl-val" data-out="hz"></span><input id="hz" type="range" min="2" max="30" step="1"></div>
+      <div class="ctrl-row"><label for="ema">Smoothing</label><span class="ctrl-val" data-out="ema"></span><input id="ema" type="range" min="0.1" max="1" step="0.05"></div>
+    </details></div>
+
+    <div class="ctrl-section"><details>
+      <summary>Advanced</summary>
+      <div class="presets tight" id="prims">
+        <button data-prim="points">Points</button>
+        <button data-prim="psorted">Pts sort</button>
+        <button data-prim="surfels">Surfels</button>
+        <button data-prim="sorted">Sorted</button>
+      </div>
+      <div class="ctrl-row"><label for="K">Per cell</label><select id="K"><option value="1">1 (98k)</option><option value="4">4 (392k)</option><option value="7">7 (686k)</option></select></div>
+      <div class="ctrl-row"><label for="edge">Edge cut</label><span class="ctrl-val" data-out="edge"></span><input id="edge" type="range" min="0" max="0.3" step="0.005"></div>
+      <div class="ctrl-row"><label for="tilt">Tilt cut</label><span class="ctrl-val" data-out="tilt"></span><input id="tilt" type="range" min="0" max="0.9" step="0.05"></div>
+      <div class="ctrl-row"><label for="flatten">Flatten</label><span class="ctrl-val" data-out="flatten"></span><input id="flatten" type="range" min="0" max="1" step="0.05"></div>
+    </details></div>
+
+    <div class="ctrl-section"><details>
+      <summary>Stats</summary>
+      <div id="stats"></div>
+    </details></div>
+
+  </div>
+</div>
+<div id="ctrl-toggle"><div class="arrow"></div></div>
+<div id="log"></div>
+<div id="kb-hint">space play / s sweep / f front / 1-4 look / h panel</div>
+<script type="module" src="proto.js"></script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+{
+ "targets": [
+  30,
+  270,
+  570,
+  810
+ ],
+ "frames": 28,
+ "inferMed": 39,
+ "range": [
+  0,
+  4.56640625
+ ],
+ "shots": [
+  {
+   "F": 30,
+   "motionPixelPct": {},
+   "tiltCulledPct": {},
+   "culledPct": {},
+   "edgePct": 1.16
+  },
+  {
+   "F": 270,
+   "motionPixelPct": {},
+   "tiltCulledPct": {},
+   "culledPct": {},
+   "edgePct": 1
+  },
+  {
+   "F": 570,
+   "motionPixelPct": {},
+   "tiltCulledPct": {},
+   "culledPct": {},
+   "edgePct": 1.05
+  },
+  {
+   "F": 810,
+   "motionPixelPct": {},
+   "tiltCulledPct": {},
+   "culledPct": {},
+   "edgePct": 1.19
+  }
+ ],
+ "bgMs": [
+  25,
+  26,
+  17,
+  17
+ ],
+ "avgColorMs": [
+  59,
+  56,
+  58,
+  59
+ ],
+ "syncMs": {
+  "h1_holes_15": [
+   1,
+   2,
+   2,
+   1
+  ],
+  "h3_fill_15": [
+   1,
+   1,
+   1,
+   2
+  ],
+  "h5_fillavg_15": [
+   2,
+   2,
+   1,
+   2
+  ],
+  "h6_fillavg_25": [
+   2,
+   2,
+   2,
+   1
+  ]
+ },
+ "step": "matched F810"
+}
