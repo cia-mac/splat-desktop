@@ -183,6 +183,14 @@ Fix in `proto.js`: `gallery()` now posts the frame's depth to the sort worker (`
 
 Check: `?gallery=1&frames=270&grids=417&looks=blobs&w=1280`, compared with the old run29 image of the same frame (`results/run33/sortfix_old_vs_new.png`, left old, right new). Mean absolute difference 32/255, 38.7% of pixels differ by more than 30, so the stale sort was materially wrong. In the new image the banana correctly sits in front of the face; in the old one it is partly occluded. The other run29/run30 Blobs and Dots images remain invalid until re-rendered. One frame, one grid, Safari only.
 
+## 11. Re-render of run29 and run30, gallery framing fix (2026-09-25)
+
+First re-render (`results/run34` = run29 parameters, `results/run35` = run30 parameters) had the sort fix only. Blend also changed by 14 to 21% of pixels although it does not use the sort worker, with a visible framing shift. Cause found in code: `gallery()` set `camera.aspect` but never reset `camera.zoom` (nor `uFocal`), so framing depended on the Safari window shape (`renderLook` already set `zoom = 1`). Fix in `proto.js` `gallery()`: `camera.zoom = 1` and `U.uFocal`. Pre-fix copy: `proto_v_2026-09-25_pre_galleryzoom.js`.
+
+Canonical set: `results/run36` (run29 parameters: frames 270 and 570, grids 417/208/139/104, Blend/Blobs/Dots, 1280 wide, all 24 images). Reproducibility check: `results/run37` is the same run in a different Safari window shape (1000x600) after a Safari restart; over all 24 images the largest mean difference is 0.042/255 and at most 0.011% of pixels differ by more than 30. So gallery renders no longer depend on the window. Contact sheet of the new Blobs and Dots at frame 270: `results/selected/sheet_gallery_f270_v2.jpg` (top row Blobs, bottom row Dots, grids 417/208/139/104).
+
+Old vs canonical (grid 417, frame 270), share of pixels differing by more than 30/255: Blend 13.5%, Blobs 35.7%, Dots 60.2%. The old run29 and run30 images are stale (sorting) and unframed (window-dependent); treat them as superseded. run34 and run35 (sort fix only) are superseded by run36. A run30 equivalent (grids 834 and 1112) was not re-rendered with the final code. One frame pair, Safari only.
+
 ## Open items for Cia
 
 1. Done 2026-09-25 (section 9). The Developer settings in Safari can be switched back off; they are no longer needed. "Allow unsigned extensions" especially should go back off.
