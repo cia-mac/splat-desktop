@@ -1137,7 +1137,7 @@ function farthestLayer(d, rgb, w, h, R) {
 // Same layer at 1/f resolution (nearest subsample, window R/f), returned at the reduced size.
 // The bg layer is soft and only ever sampled in UV space, so the smaller texture is a drop-in.
 function farthestLayerFast(d, rgb, w, h, R, f = 2) {
-  if (FILL === 'inpaint') return inpaintLayer(d, rgb, w, h, R, Math.max(1, f), +(Q.get('fillT') || 0.35), +(Q.get('fillDil') ?? 1));
+  if (FILL === 'inpaint') return inpaintLayer(d, rgb, w, h, R, Math.max(1, f), +(Q.get('fillT') ?? 0.35), +(Q.get('fillDil') ?? 1));
   if (f <= 1) return { ...farthestLayer(d, rgb, w, h, R), w, h };
   const wd = Math.ceil(w / f), hd = Math.ceil(h / f), dd = new Float32Array(wd * hd), rd = new Uint8Array(wd * hd * 4);
   for (let y = 0; y < hd; y++) for (let x = 0; x < wd; x++) {
@@ -1381,8 +1381,9 @@ function computeBg() {
 }
 // The look shown in look_v1.mp4: surfels, edge cutoff 0.10, background fill, orbit within +-15 / +-6.
 function applyRecommended() {
-  S.prim = 'surfels'; S.K = 1; build(); S.depthAmt = 0.8; S.yawMax = 15; S.pitchMax = 6; S.yawLim = 15; S.pitchLim = 6; S.sweep = true;
-  U.uEdge.value = 0.2; U.uTilt.value = 0; U.uMotionT.value = 0; bgOn = true; computeBg(); syncUI();
+  S.K = 1; build(); S.depthAmt = 0.8; S.yawMax = 15; S.pitchMax = 6; S.yawLim = 15; S.pitchLim = 6; S.sweep = true;
+  U.uEdge.value = 0.2; U.uTilt.value = 0; U.uMotionT.value = 0;
+  setLook('blend');   // primitive, Splat size, falloff, fill on, and the highlighted Look button all come back together
 }
 
 
