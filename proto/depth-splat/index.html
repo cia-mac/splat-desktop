@@ -130,7 +130,8 @@ summary:hover { color: rgba(var(--accent), 0.7); }
         <button data-prim="surfels">Surfels</button>
         <button data-prim="sorted">Sorted</button>
       </div>
-      <div class="ctrl-row"><label for="K">Per cell</label><select id="K"><option value="1">1 (98k)</option><option value="4">4 (392k)</option><option value="7">7 (686k)</option></select></div>
+      <div class="ctrl-row"><label for="fillmode">Fill layer</label><select id="fillmode"><option value="far">copy far pixel</option><option value="inpaint">inpainted</option></select></div>
+      <div class="ctrl-row"><label for="K">Per cell</label><select id="K"><option value="1">1 per cell</option><option value="4">4 per cell</option><option value="7">7 per cell</option></select></div>
       <div class="ctrl-row"><label for="edge">Edge cut</label><span class="ctrl-val" data-out="edge"></span><input id="edge" type="range" min="0" max="0.3" step="0.005"></div>
       <div class="ctrl-row"><label for="tilt">Tilt cut</label><span class="ctrl-val" data-out="tilt"></span><input id="tilt" type="range" min="0" max="0.9" step="0.05"></div>
       <div class="ctrl-row"><label for="flatten">Flatten</label><span class="ctrl-val" data-out="flatten"></span><input id="flatten" type="range" min="0" max="1" step="0.05"></div>

@@ -191,6 +191,14 @@ Canonical set: `results/run36` (run29 parameters: frames 270 and 570, grids 417/
 
 Old vs canonical (grid 417, frame 270), share of pixels differing by more than 30/255: Blend 13.5%, Blobs 35.7%, Dots 60.2%. The old run29 and run30 images are stale (sorting) and unframed (window-dependent); treat them as superseded. run34 and run35 (sort fix only) are superseded by run36. A run30 equivalent (grids 834 and 1112) was not re-rendered with the final code. One frame pair, Safari only.
 
+## 12. Re-render of run30 (grids 417, 834, 1112), 2026-09-25
+
+`results/run38`: the run30 parameters (frame 270, grids 417/834/1112, Blend and Blobs, 1920 wide) rendered with the final code (sort fix and gallery framing fix, on `main` at ddf7d72). All 6 images. Contact sheet of face crops: `results/selected/sheet_fine_crop_v2.jpg` (top row Blend, bottom row Blobs, grids 417, 834, 1112 left to right).
+
+Old run30 vs run38, share of pixels differing by more than 30/255: Blend 13.5 to 14.8%, Blobs 35.9 to 37.2%. These match the run36 comparison at 1280 wide (Blend 13.5%, Blobs 35.7%), so the changes are the same fixes at both sizes. The old run30 images are superseded.
+
+What the sheet shows, one frame: Blend stays clean at all three grids and the difference between 834 and 1112 is small. Blobs shows the regular lattice at every grid, with the rows visible on the face and fine horizontal banding at 1112; the black holes behind the subject are unchanged by grid, since there is no fill in Blobs. Not measured: timing (the gallery timer recorded only a fill time of 10 ms for one run). The first attempt of this render produced no files and was repeated once; the cause was not diagnosed, and the repeat completed normally.
+
 ## Open items for Cia
 
 1. Done 2026-09-25 (section 9). The Developer settings in Safari can be switched back off; they are no longer needed. "Allow unsigned extensions" especially should go back off.
