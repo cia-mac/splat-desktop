@@ -193,7 +193,7 @@ Old vs canonical (grid 417, frame 270), share of pixels differing by more than 3
 
 ## 12. Re-render of run30 (grids 417, 834, 1112), 2026-09-25
 
-`results/run38`: the run30 parameters (frame 270, grids 417/834/1112, Blend and Blobs, 1920 wide) rendered with the final code (sort fix and gallery framing fix, on `main` at ddf7d72). All 6 images. Contact sheet of face crops: `results/selected/sheet_fine_crop_v2.jpg` (top row Blend, bottom row Blobs, grids 417, 834, 1112 left to right).
+`results/run38`: the run30 parameters (frame 270, grids 417/834/1112, Blend and Blobs, 1920 wide) rendered with the sort fix and gallery framing fix. **Provenance correction (RESULTS_v16 section 4):** this file originally said the render was "on `main` at ddf7d72." That is wrong. `results/run38/gallery.json` contains a `fillMs` field that only exists in code from commit `3c23148` onward, a commit made in this shared worktree by another session before mine but not yet on `main` when I wrote that line. So the render used code ahead of `main` at the time, not `main` itself; the pixel-difference numbers below are unaffected, but the stated provenance was inaccurate. All 6 images. Contact sheet of face crops: `results/selected/sheet_fine_crop_v2.jpg` (top row Blend, bottom row Blobs, grids 417, 834, 1112 left to right).
 
 Old run30 vs run38, share of pixels differing by more than 30/255: Blend 13.5 to 14.8%, Blobs 35.9 to 37.2%. These match the run36 comparison at 1280 wide (Blend 13.5%, Blobs 35.7%), so the changes are the same fixes at both sizes. The old run30 images are superseded.
 
