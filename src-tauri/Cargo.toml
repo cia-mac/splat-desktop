@@ -1,6 +1,6 @@
 [package]
 name = "ciafx"
-version = "0.1.3"
+version = "0.1.4"
 description = "Pointfield: real-time video-to-particle renderer by Ciamac"
 authors = ["Ciamac Parhizi"]
 edition = "2021"

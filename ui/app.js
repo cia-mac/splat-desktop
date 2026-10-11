@@ -25,6 +25,7 @@ let N = 0, geom, points, mat, videoTex;
 let baseX, baseY, pos, uv, size, phaseX, phaseY, mOffX, mOffY;
 let video, renderer, camera, scene, clock;
 let running = false;
+let rafId = 0;
 
 /* ═══════════════ SHADERS (GPU turbulence) ═══════════════ */
 const VERT = `
@@ -127,7 +128,12 @@ const ctrlPanel = document.getElementById('controls');
 const PANEL_W = 320;
 function visibleSize() {
   const panelOpen = !ctrlPanel.classList.contains('closed');
-  return { width: innerWidth - (panelOpen ? PANEL_W : 0), height: innerHeight };
+  // Clamp: a window narrower than the panel would otherwise hand setSize() a
+  // zero or negative width and build a degenerate camera frustum.
+  return {
+    width: Math.max(1, innerWidth - (panelOpen ? PANEL_W : 0)),
+    height: Math.max(1, innerHeight),
+  };
 }
 function resizeRenderSurface() {
   if (!running || !renderer) return;
@@ -164,25 +170,38 @@ function handleFile(file) {
   if (file.size > 500 * 1024 * 1024) {
     if (!confirm('This file is over 500 MB. Performance may suffer. Continue?')) return;
   }
-  videoName = file.name.replace(/\.[^.]+$/, '') || 'Pointfield';
+  // Nothing is written to the globals until the file is accepted; a rejected
+  // file must not disturb the video that is already running.
+  const name = file.name.replace(/\.[^.]+$/, '') || 'Pointfield';
   const url = URL.createObjectURL(file);
   const v = document.createElement('video');
   v.src = url; v.muted = true; v.loop = true; v.playsInline = true; v.preload = 'auto';
   v.crossOrigin = 'anonymous';
   v.addEventListener('loadedmetadata', () => {
-    vidW = v.videoWidth; vidH = v.videoHeight;
-    if (vidW > 3840 || vidH > 2160) {
-      if (!confirm(`Video is ${vidW}x${vidH}. This may be slow. 1080p recommended. Continue?`)) {
+    const w = v.videoWidth, h = v.videoHeight;
+    if (!w || !h) {
+      alert('That file has no video track.');
+      URL.revokeObjectURL(url); return;
+    }
+    if (w > 3840 || h > 2160) {
+      if (!confirm(`Video is ${w}x${h}. This may be slow. 1080p recommended. Continue?`)) {
         URL.revokeObjectURL(url); return;
       }
     }
-    initApp(v);
+    initApp(v, name);
   });
   v.addEventListener('error', () => { alert('Could not decode video. Try a different format.'); URL.revokeObjectURL(url); });
 }
 
 /* ═══════════════ INIT APP ═══════════════ */
-function initApp(v) {
+function initApp(v, name) {
+  vidW = v.videoWidth; vidH = v.videoHeight; videoName = name;
+
+  // Cancel the previous frame loop before starting a new one. Without this,
+  // every video loaded while one is running leaves its own tick() chain alive
+  // and the per-frame work multiplies.
+  if (rafId) { cancelAnimationFrame(rafId); rafId = 0; }
+
   if (running) {
     if (geom) { geom.dispose(); scene.remove(points); }
     if (mat) mat.dispose();
@@ -409,8 +428,8 @@ let frames = 0, fpsT = 0;
 const fpsEl = document.getElementById('fps-display');
 
 function tick() {
-  if (!running) return;
-  requestAnimationFrame(tick);
+  if (!running) { rafId = 0; return; }
+  rafId = requestAnimationFrame(tick);
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.getElapsedTime();
 
@@ -439,10 +458,11 @@ addEventListener('resize', () => {
 
 /* ═══════════════ KEYBOARD ═══════════════ */
 addEventListener('keydown', e => {
+  // Open works on the start screen too; every other key needs a loaded video.
+  if ((e.metaKey || e.ctrlKey) && (e.key === 'o' || e.key === 'O')) { e.preventDefault(); fileInput.click(); return; }
   if (!running) return;
   if (e.key === ' ') { e.preventDefault(); toggleVideoPause(); }
   if (e.key === 'r' || e.key === 'R') { e.preventDefault(); toggleRecord(); }
-  if ((e.metaKey || e.ctrlKey) && e.key === 'o') { e.preventDefault(); fileInput.click(); }
   if (e.key === 'Escape') { togglePanel(); }
 });
 
@@ -457,7 +477,11 @@ function toggleVideoPause() {
 let rebuildTimer = null;
 function scheduleRebuild() {
   clearTimeout(rebuildTimer);
-  rebuildTimer = setTimeout(() => buildParticles(), 300);
+  // The controls exist before a video does. With nothing loaded there is no
+  // scene or material to build into; the new values are picked up by
+  // initApp when a video arrives.
+  if (!running) return;
+  rebuildTimer = setTimeout(() => { if (running) buildParticles(); }, 300);
 }
 
 function computeGrid(target) {
@@ -566,7 +590,7 @@ function buildControls() {
 }
 
 /* ═══════════════ RECORD ═══════════════ */
-let mediaRecorder = null, recordedChunks = [], recordStart = 0, recordTimerInterval = null;
+let mediaRecorder = null, recordStart = 0, recordTimerInterval = null;
 
 function toggleRecord() {
   if (mediaRecorder && mediaRecorder.state === 'recording') { stopRecord(); return; }
@@ -574,19 +598,13 @@ function toggleRecord() {
 }
 
 function startRecord() {
-  // Enable preserveDrawingBuffer for recording
-  if (renderer) {
-    const oldCanvas = renderer.domElement;
-    renderer.dispose();
-    renderer = new THREE.WebGLRenderer({
-      canvas: oldCanvas, antialias: false, alpha: true, premultipliedAlpha: true,
-      preserveDrawingBuffer: true, powerPreference: 'high-performance'
-    });
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-    renderer.setSize(innerWidth, innerHeight);
-    renderer.setClearColor(0x000000, 0);
-  }
-
+  // The renderer is used as-is. This used to tear it down and rebuild it with
+  // preserveDrawingBuffer: true, which did nothing: a canvas can only hold one
+  // WebGL context, so getContext returned the existing one and ignored the new
+  // attributes. What the swap did do was re-upload all geometry mid-record,
+  // orphan the old GL buffers, and leave a window in which a pending onstop
+  // could dispose a renderer that no longer belonged to it. Recordings work
+  // without it, which is the proof the flag was never applying.
   const stream = renderer.domElement.captureStream(30);
   const types = [
     'video/mp4;codecs=hvc1',
@@ -597,32 +615,67 @@ function startRecord() {
   let mime = types.find(t => MediaRecorder.isTypeSupported(t)) || '';
   const opts = { videoBitsPerSecond: 12000000 };
   if (mime) opts.mimeType = mime;
-  const ext = mime.startsWith('video/mp4') ? 'mp4' : 'webm';
+  // With no supported type WebKit falls back to its own encoder, which writes
+  // an mp4 container on macOS. Naming that file .webm makes it unopenable.
+  const ext = (!mime || mime.startsWith('video/mp4')) ? 'mp4' : 'webm';
 
-  mediaRecorder = new MediaRecorder(stream, opts);
-  recordedChunks = [];
-  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
-  mediaRecorder.onstop = async () => {
-    const blob = new Blob(recordedChunks, { type: mime || 'video/mp4' });
+  // Everything a take needs is bound to this recorder, not to the globals.
+  // A recorder's final dataavailable and stop events are queued, so a take
+  // started right after stopping the previous one would otherwise push the
+  // old take's last chunk into the new take's array and build the old file
+  // from the new take's data.
+  const recorder = new MediaRecorder(stream, opts);
+  const chunks = [];
+  const takeName = videoName;
+  mediaRecorder = recorder;
+  recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+  recorder.onstop = async () => {
+    const blob = new Blob(chunks, { type: mime || 'video/mp4' });
+    if (blob.size === 0) { alert('The recording was empty. Nothing was saved.'); return; }
     const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    const defaultName = `Pointfield_${videoName}_${ts}.${ext}`;
+    const defaultName = `Pointfield_${takeName}_${ts}.${ext}`;
 
     // Native save dialog (Tauri) or download fallback (browser)
     if (isTauri) {
       try {
-        const filePath = await invoke('plugin:dialog|save', {
-          options: {
-            defaultPath: defaultName,
-            filters: [{ name: 'Video', extensions: [ext] }]
-          }
-        });
+        // Cancelling the save dialog used to drop the take without a word.
+        // Ask before discarding, and offer the dialog again.
+        const KEEP = 'Choose Location';
+        let filePath = null;
+        for (;;) {
+          filePath = await invoke('plugin:dialog|save', {
+            options: {
+              defaultPath: defaultName,
+              filters: [{ name: 'Video', extensions: [ext] }]
+            }
+          });
+          if (filePath) break;
+          const answer = await invoke('plugin:dialog|message', {
+            title: 'Recording not saved',
+            message: 'This recording has not been saved. If you discard it, it cannot be recovered.',
+            kind: 'warning',
+            buttons: { OkCancelCustom: [KEEP, 'Discard'] }
+          });
+          if (answer !== KEEP && answer !== 'Ok') break;
+        }
         if (filePath) {
-          const arrayBuf = await blob.arrayBuffer();
-          const bytes = Array.from(new Uint8Array(arrayBuf));
-          await invoke('save_file', { path: filePath, data: bytes });
+          // Write in bounded chunks, slicing the Blob per chunk so the whole
+          // recording is never materialised a second time. Every byte
+          // crossing the IPC boundary still becomes a JS number and then JSON
+          // text (the transport is postMessage; see RUNBOOK), but that
+          // overhead is now paid per 4 MB chunk rather than per recording.
+          const CHUNK = 4 * 1024 * 1024;
+          for (let off = 0; off < blob.size; off += CHUNK) {
+            const buf = await blob.slice(off, Math.min(off + CHUNK, blob.size)).arrayBuffer();
+            const part = Array.from(new Uint8Array(buf));
+            await invoke('save_file', { path: filePath, data: part, append: off > 0 });
+          }
         }
       } catch (err) {
+        // A silent failure here means the user records, saves, and gets
+        // nothing, with no explanation.
         console.error('save failed:', err);
+        alert('Could not save the recording: ' + err);
       }
     } else {
       const url = URL.createObjectURL(blob);
@@ -631,30 +684,28 @@ function startRecord() {
       URL.revokeObjectURL(url);
     }
 
-    // Restore non-preserveDrawingBuffer renderer
-    const oldCanvas = renderer.domElement;
-    renderer.dispose();
-    renderer = new THREE.WebGLRenderer({
-      canvas: oldCanvas, antialias: false, alpha: true, premultipliedAlpha: true,
-      preserveDrawingBuffer: false, powerPreference: 'high-performance'
-    });
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-    renderer.setSize(innerWidth, innerHeight);
-    renderer.setClearColor(0x000000, 0);
   };
 
   if (document.getElementById('full-loop').checked) {
-    video.currentTime = 0;
+    // The wrap is detected by watching currentTime, so a paused video would
+    // never wrap and the recording would grow until stopped by hand. The
+    // watcher is bound to this recorder and this video so a leftover watcher
+    // from an earlier take can never stop a later one.
+    const vid = video;
+    vid.play().catch(() => {});
+    vid.currentTime = 0;
     let prev = 0;
     const check = () => {
-      if (!mediaRecorder || mediaRecorder.state !== 'recording') return;
-      if (video.currentTime < prev && prev > 1) { stopRecord(); return; }
-      prev = video.currentTime; requestAnimationFrame(check);
+      if (mediaRecorder !== recorder || recorder.state !== 'recording') return;
+      // A wrap is a real jump backwards, not jitter; this also works for loops
+      // shorter than a second, which a fixed "prev > 1" threshold never caught.
+      if (vid.currentTime + 0.25 < prev) { stopRecord(); return; }
+      prev = vid.currentTime; requestAnimationFrame(check);
     };
     requestAnimationFrame(check);
   }
 
-  mediaRecorder.start();
+  recorder.start();
   recordStart = performance.now();
 
   const btn = document.getElementById('record-btn');
@@ -681,6 +732,7 @@ function stopRecord() {
 /* ═══════════════ NEW VIDEO ═══════════════ */
 function resetToUpload() {
   running = false;
+  clearTimeout(rebuildTimer);
   if (mediaRecorder && mediaRecorder.state === 'recording') stopRecord();
   if (geom) { geom.dispose(); scene.remove(points); }
   if (mat) mat.dispose();
