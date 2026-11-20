@@ -30,14 +30,15 @@ const CINE = {
   // factor and vs = its random spread, scat = angle scatter, lin/quad = drag, grav = gravity (screen units/s^2, + is down),
   // curl = how much the turbulence grid carries it, lobe = how strongly the blast's irregular shape reshapes it.
   CLASSES: [
-    { p: 0.30, vk: 1.00, vs: 0.16, scat: 0.10, lin: 1.1, quad: 0.010, grav: 0,    curl: 0.5, lobe: 1.0 },
-    { p: 0.45, vk: 0.90, vs: 0.40, scat: 0.50, lin: 0.5, quad: 0.012, grav: -25,  curl: 1.0, lobe: 0.7 },
+    { p: 0.30, vk: 1.15, vs: 0.30, scat: 0.10, lin: 1.1, quad: 0.010, grav: 0,    curl: 0.5, lobe: 1.0 },
+    { p: 0.45, vk: 1.10, vs: 0.50, scat: 0.50, lin: 0.5, quad: 0.012, grav: -25,  curl: 1.0, lobe: 0.7 },
     { p: 0.21, vk: 0.85, vs: 0.60, scat: 0.35, lin: 0.6, quad: 0.007, grav: 130,  curl: 0.0, lobe: 0.5 },
     { p: 0.04, vk: 1.00, vs: 0.80, scat: 0.50, lin: 0.7, quad: 0.0015, grav: 260, curl: 0.0, lobe: 0.3 },
   ],
-  LOBES: 5, FINGERS: [6, 9], LOBE_AMP: 0.22, FINGER_AMP: [0.7, 1.4],
-  AFTERWIND: 160, AW_T0: 0.35, AW_T1: 0.9, AW_T2: 2.0, AW_T3: 3.4,   // smoke brakes after the blast and keeps swirling instead of flying off
-  CURL_A: 60, CURL_K: 0.012, CURL_T0: 0.1, CURL_TAU: 2.2, CURL_END: 4.4,
+  LOBES: 2, FINGERS: [0, 0], LOBE_AMP: 0.07, FINGER_AMP: [0.7, 1.4], DRAG_SPREAD: 1.7,   // mild shape, no jets; DRAG_SPREAD scatters how far each point goes
+  AFTERWIND: 70, AW_T0: 0.35, AW_T1: 0.9, AW_T2: 2.0, AW_T3: 3.4,   // smoke brakes after the blast and keeps swirling instead of flying off
+  CURL_A: 0,   // the sine turbulence grid read as waves: off
+  CURL_K: 0.012, CURL_T0: 0.1, CURL_TAU: 2.2, CURL_END: 4.4,
   SHAKE_PX: 7, SHAKE_TAU: 0.12,
 };
 const WELL = { D: 1.0, T: 1.3, SPIN: 1.1, KEEP: 0.015 };   // implode: an eased swallow into the tap
@@ -152,7 +153,7 @@ export function createActions(api) {
       for (let j = 0; j < NC; j++) { CINE_LIN[j] = CINE.CLASSES[j].lin * dt; CINE_QUAD[j] = CINE.CLASSES[j].quad / U * dt; }   // quad per unit speed: speeds scale with U
       const sm = (a, b, x) => { const u = x < a ? 0 : x > b ? 1 : (x - a) / (b - a); return u * u * (3 - 2 * u); };
       cine.aw = CINE.AFTERWIND * U * sm(CINE.AW_T0, CINE.AW_T1, cine.tb) * (1 - sm(CINE.AW_T2, CINE.AW_T3, cine.tb));
-      cine.curl = cine.tb > CINE.CURL_T0 && cine.tb < CINE.CURL_END;
+      cine.curl = CINE.CURL_A > 0 && cine.tb > CINE.CURL_T0 && cine.tb < CINE.CURL_END;
       if (cine.curl) {
         curlCW = W / (CURL_G - 1); curlCH = H / (CURL_G - 1);
         // turbulence that rises over a quarter second, then fades slowly: the smoke keeps billowing after the blast has passed
@@ -358,11 +359,11 @@ export function createActions(api) {
           // the front arrives: pick its class and its blast velocity
           let d = Math.sqrt(d2), nx, ny;
           const h1 = hash32(i ^ salt), h2 = hash32(h1 + i), cls = (h1 & 1023) / 1023;
-          const r2 = (h2 & 0xffff) / 65536, r3 = (h2 >>> 16) / 65536;
+          const r2 = (h2 & 0xffff) / 65536, r3 = (h2 >>> 16) / 65536, r3b = (hash32(h2 ^ i) >>> 8) / 16777216;
           if (d < 1e-3) { const a = r2 * 6.2832; nx = Math.cos(a); ny = Math.sin(a); d = 1e-3; } else { nx = dx / d; ny = dy / d; }
           m = cls < P0 ? 0 : cls < P1 ? 1 : cls < P2 ? 2 : 3; cineMatI[i] = m;
           const c = C[m], th = Math.atan2(ny, nx) + 3.14159265, L = lobeCls[m][Math.min(LOBE_TAB - 1, (th * LT) | 0)];
-          cineDrag[i] = 1 / L; ta = Math.sqrt(d2) / (CINE.FRONT_V * U);
+          cineDrag[i] = (1 - CINE.DRAG_SPREAD * 0.5 + CINE.DRAG_SPREAD * r3b) / L; ta = Math.sqrt(d2) / (CINE.FRONT_V * U);
           const a = (r2 - 0.5) * c.scat, ca = 1 - a * a * 0.5, sa = a;   // small-angle rotation
           const v = BV * c.vk * L * (0.55 + 0.9 * Math.exp(-d / reach)) * (1 - c.vs * 0.5 + c.vs * r3);
           vx = (nx * ca - ny * sa) * v; vy = (nx * sa + ny * ca) * v;
