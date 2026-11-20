@@ -12,7 +12,7 @@ const REDUCE = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-
 
 const STEPS = [
   { id: 'swirl',  demo: 'sweep', say: 'move the mouse through the points',
-    hint: 'no button needed: the points swirl around the cursor' },
+    hint: 'no button needed: slow moves swirl the points, a fast stroke throws them' },
   { id: 'push',   demo: 'push',  say: 'hold the left button and sweep to push them away',
     hint: 'press and hold the left button, then drag across the field' },
   { id: 'attract', demo: 'pull', keys: ['shift'], say: 'hold shift and the left button still and the points gather to it',
@@ -81,12 +81,13 @@ export function initGuide(api) {
   /* ---------- ghost cursor ---------- */
   function place(x, y, kind) {
     dot.style.transform = `translate(${x}px, ${y}px)`;
-    const w = api.screenToWorld(x, y), m = api.mouse;
-    m.x = w.x; m.y = w.y; m.active = true; m.left = kind === 'push'; m.pull = kind === 'pull';
+    const w = api.screenToWorld(x, y), m = api.mouse, now = performance.now();
+    if (m.active && m.t) { const sec = Math.max(1, now - m.t) / 1000; m.vx = (w.x - m.x) / sec; m.vy = (w.y - m.y) / sec; }   // the swirl follows the pointer's speed
+    m.t = now; m.x = w.x; m.y = w.y; m.active = true; m.left = kind === 'push'; m.pull = kind === 'pull';
   }
   function ghostStop() {
     cancelAnimationFrame(ghost.raf); clearTimeout(ghost.timer);
-    if (ghost.on) { const m = api.mouse; m.left = m.pull = m.active = false; }
+    if (ghost.on) { const m = api.mouse; m.left = m.pull = m.active = false; m.vx = m.vy = 0; m.t = 0; }
     ghost.on = false; dot.hidden = true;
   }
   function ghostRun(kind) {

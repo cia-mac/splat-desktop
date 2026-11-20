@@ -16,8 +16,8 @@ let SIZE_MIN = 1.7, SIZE_MAX = 5.4, SIZE_POW = 2.4;
 let OPACITY = 0.55, BRIGHTNESS = 2.4;
 let TURB_AMP = 2.0;
 const TURB_SPEED = 0.5;
-let MOUSE_RADIUS = 278, MOUSE_PUSH = 29;
-const ATTRACT_STRENGTH = 30, SWIRL_STRENGTH = 25, SWIRL_INWARD = 6;
+let MOUSE_RADIUS = 180, MOUSE_PUSH = 29;   // radius: the iPhone's default (was 278); scaled to the window by fieldScale()
+const SWIRL_STRENGTH = 25, SWIRL_INWARD = 6;
 const RETURN_SPEED = 1.2, WAKE_RETURN = 0.35, WAKE_THRESHOLD = 3;
 const SEED = 42;
 
@@ -370,7 +370,19 @@ function buildParticles() {
 }
 
 /* ═══════════════ MOUSE ═══════════════ */
-const mouse = { x: -9999, y: -9999, active: false, left: false, pull: false };
+const mouse = { x: -9999, y: -9999, active: false, left: false, pull: false, vx: 0, vy: 0, t: 0, hist: [] };
+/* The iPhone's finger model (pointfield-ios field.js, TOUCH_*), carried to the pointer. Distances and speeds are the phone's,
+   a field about 500 units across its short side, scaled by um = shortSide / 500 so the pointer covers the same share of
+   the window as a finger covers of the glass. */
+const TOUCH_STIR_V = 250;   // pointer speed (units/s) at which hovering is fully a stir
+const TOUCH_DRAG = 0.6;     // share of the pointer's velocity handed to the points it passes over
+const HOLD_PULL = 120, HOLD_CORE = 14;   // shift + hold pulls straight in and gathers into a band about this wide, not a point
+const FLICK_V = 1467, FLICK_GAP_MS = 350;   // a stroke faster than this (the iPhone's 1100 px/s) throws the points near it
+/* Pointer speed is measured over the last ~80 ms of EVENT timestamps, never per event or by handler time: a busy frame
+   queues mouse events that then arrive back to back, and a per-event speed would read them as a huge jump. */
+const SPEED_WIN_MS = 80, SPEED_MIN_SPAN_MS = 16, SPEED_CAP = FLICK_V * 4;
+let lastFlick = 0;
+const fieldScale = () => Math.min(vidW, vidH) / 500;
 
 /* ═══════════════ ACTIONS (explode, implode, tornado, drain, orbit, fall, rise, reset) ═══════════════ */
 const fx = createActions({
@@ -412,10 +424,22 @@ function screenToWorld(sx, sy) {
 
 addEventListener('mousemove', e => {
   if (!running) return;
-  const w = screenToWorld(e.clientX, e.clientY);
-  mouse.x = w.x; mouse.y = w.y; mouse.active = true;
+  const w = screenToWorld(e.clientX, e.clientY), now = e.timeStamp, um = fieldScale();
+  if (!mouse.active) mouse.hist.length = 0;   // a fresh entry: no stale samples
+  mouse.hist.push({ t: now, x: w.x, y: w.y });
+  while (mouse.hist.length > 1 && now - mouse.hist[0].t > SPEED_WIN_MS) mouse.hist.shift();
+  const old = mouse.hist[0], span = now - old.t;
+  if (span >= SPEED_MIN_SPAN_MS) {   // too short a span (events bunched together) leaves the speed alone
+    let vx = (w.x - old.x) / (span / 1000), vy = (w.y - old.y) / (span / 1000);
+    const sp = Math.hypot(vx, vy), cap = SPEED_CAP * um; if (sp > cap) { vx *= cap / sp; vy *= cap / sp; }
+    mouse.vx += (vx - mouse.vx) * 0.5; mouse.vy += (vy - mouse.vy) * 0.5;
+  }
+  mouse.t = now; mouse.x = w.x; mouse.y = w.y; mouse.active = true;
+  if (!mouse.left && !mouse.pull && !armed && now - lastFlick > FLICK_GAP_MS && Math.hypot(mouse.vx, mouse.vy) > FLICK_V * um) {
+    lastFlick = now; fx.flick(mouse.x, mouse.y, mouse.vx, mouse.vy);   // the iPhone's fast-swipe throw
+  }
 });
-addEventListener('mouseleave', () => { mouse.active = false; });
+addEventListener('mouseleave', () => { mouse.active = false; mouse.vx = 0; mouse.vy = 0; mouse.t = 0; mouse.hist.length = 0; });
 /* Mouse (D-0827, D-0831): left-hold pushes, shift + left-hold pulls in, a right click explodes at the pointer with no
    arming, and with a tool armed a left click fires it there instead. */
 addEventListener('mousedown', e => {
@@ -437,8 +461,14 @@ function updateMouseOffsets(dt) {
   let dirty = false;
 
   fx.prep(dt);
-  const fxOn = fx.state.on, fxReform = fx.state.reforming;
-  if (fxOn || fxReform) dirty = true;
+  const fxOn = fx.state.on, fxKick = fx.state.kick, fxReform = fx.state.reforming;
+  if (fxOn || fxKick || fxReform) dirty = true;
+
+  // the pointer's velocity fades when it stops moving; everything is scaled to the window like the iPhone's
+  if (performance.now() - mouse.t > 60) { const k = Math.exp(-dt * 12); mouse.vx *= k; mouse.vy *= k; }
+  if (fxKick) fx.kickStep(dt);   // coasting after a throw: one tight loop, then the wake return in the loop below
+  const um = fieldScale(), R = MOUSE_RADIUS * um;
+  const stir = Math.min(1, Math.hypot(mouse.vx, mouse.vy) / (TOUCH_STIR_V * um));
 
   for (let i = 0; i < N; i++) {
     // Mouse interaction
@@ -447,20 +477,21 @@ function updateMouseOffsets(dt) {
       const ddx = curX + mOffX[i] - mouse.x;
       const ddy = curY + mOffY[i] - mouse.y;
       const dist = Math.sqrt(ddx * ddx + ddy * ddy);
-      if (dist < MOUSE_RADIUS && dist > 0.5) {
+      if (dist < R && dist > 0.5) {
         const nx = ddx / dist, ny = ddy / dist;
-        const fo = 1 - dist / MOUSE_RADIUS;
+        const fo = 1 - dist / R;
         if (mouse.pull) {
-          const f = fo * ATTRACT_STRENGTH * dt * 4;
-          mOffX[i] -= nx * f; mOffY[i] -= ny * f;
+          // the iPhone's hold-pull: straight in, gentler with distance, into a small band so the points never overshoot
+          const core = HOLD_CORE * um;
+          if (dist > core) { const f = Math.min(dist - core, fo * fo * HOLD_PULL * um * dt * 4); mOffX[i] -= nx * f; mOffY[i] -= ny * f; }
         } else if (mouse.left) {
-          const f = fo * MOUSE_PUSH * dt * 4;
+          const f = fo * MOUSE_PUSH * um * dt * 4;
           mOffX[i] += nx * f; mOffY[i] += ny * f;
         } else {
-          const sf = fo * SWIRL_STRENGTH * dt * 4;
-          const inf = fo * SWIRL_INWARD * dt * 4;
-          mOffX[i] += -ny * sf - nx * inf;
-          mOffY[i] += nx * sf - ny * inf;
+          // hover is the finger on the glass: the swirl follows the pointer's speed, and the points it passes inherit its velocity
+          const sf = fo * SWIRL_STRENGTH * um * dt * 4 * stir, inf = fo * SWIRL_INWARD * um * dt * 4 * stir, dk = fo * fo * TOUCH_DRAG * dt;
+          mOffX[i] += -ny * sf - nx * inf + mouse.vx * dk;
+          mOffY[i] += nx * sf - ny * inf + mouse.vy * dk;
         }
       }
     }
@@ -869,3 +900,5 @@ const guide = initGuide({
 /* ═══════════════ INIT CONTROLS ON LOAD ═══════════════ */
 buildControls();
 loadSample(); // open on the bird, like the homepage; dropping a video replaces it
+
+

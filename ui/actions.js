@@ -8,10 +8,13 @@
      effects (no flash, swell or tint); (2) the smoke layer, 72% of the points, brakes at half the iPhone's drag so every
      point is blasted far, not just the debris and embers, and explode distances scale with the field's short side.
    Per-point velocity integrates into the same mOffX / mOffY offsets the mouse uses, so the GPU path is unchanged.
-   Distances and speeds are tuned for a field about 1200 units on its long side (the phone spec; the homepage's table
-   is close), so they are scaled by U = longSide / 1200 for other video sizes. */
+   Distances and speeds are the iPhone's, which has a field about 500 units across its short side (landscape: 1083 x 500).
+   Everything is scaled by U = shortSide / 500, so each action covers the same share of the screen as on the phone
+   (measured 2026-11-19 against the real iPhone engine: before this, tornado turned 2.4x slower, orbit moved 2.5x less
+   and fall 1.4x slower, relative to the screen). */
 
-const BASE = 1200;
+const BASE = 500;
+const TWIST_GAIN = 1.8;   // the iPhone launches tornado and orbit from a gesture at 1.8x spin; a click is the gesture here
 const FX = {
   GRAVITY: 1100, VEL_DAMP: 2.2, REFORM_RATE: 1.7,
   TORNADO_SPIN: 320, TORNADO_PULL: 40, TORNADO_EASE: 3.0, TORNADO_RADIUS_FRAC: 0.20,
@@ -40,17 +43,17 @@ const cineEase = u => { u = u < 0 ? 0 : u > 1 ? 1 : u; return u < 0.5 ? 4 * u * 
 
 export function createActions(api) {
   /* field references, refreshed from the engine every frame (the engine replaces its arrays on a rebuild) */
-  let N = 0, W = 1, H = 1, U = 1, Uc = 1, baseX, baseY, mOffX, mOffY, lastOff = null;
+  let N = 0, W = 1, H = 1, U = 1, baseX, baseY, mOffX, mOffY, lastOff = null;
   let velX = null, velY = null;
   let cineVX = null, cineVY = null, cineDel = null, cineMatI = null;
   let effect = null;        // 'tornado' | 'drain' | 'orbit' | 'fall' | 'rise' | 'explode' | 'implode' | null
   let cine = null;
-  let fxCx = 0, fxCy = 0, reformT = 0;
+  let fxCx = 0, fxCy = 0, reformT = 0, spinGain = 1, kickT = 0;
   let velDamp = 1, tornRad = 1, reformDecay = 1;
   let curlGX = null, curlGY = null, curlCW = 1, curlCH = 1;
   const CINE_LIN = new Float32Array(3), CINE_QUAD = new Float32Array(3);
   const look = { b: 1, z: 1, tint: [1, 1, 1] };
-  const out = { on: false, reforming: false, look };
+  const out = { on: false, kick: false, reforming: false, look };
 
   function refresh() {
     const f = api.field();
@@ -62,12 +65,11 @@ export function createActions(api) {
       reformT = 0;
     }
     N = f.N; W = f.W; H = f.H; baseX = f.baseX; baseY = f.baseY; mOffX = f.mOffX; mOffY = f.mOffY;
-    U = Math.max(W, H) / BASE;
-    Uc = Math.min(W, H) / 500;   // explode / implode: the iPhone's field is about 500 units across its short side
+    U = Math.min(W, H) / BASE;
     return true;
   }
   function clear() {
-    effect = null; cine = null;
+    effect = null; cine = null; kickT = 0; flickJob = null;
     const cv = api.canvas && api.canvas();
     if (cv && cv.style.transform) cv.style.transform = '';
     look.b = 1; look.z = 1; look.tint = [1, 1, 1];
@@ -112,12 +114,12 @@ export function createActions(api) {
     for (let i = 0; i < N; i++) {   // one pass: intake velocity now, blast velocity and front delay stored for later
       let dx = baseX[i] + mOffX[i] - x, dy = baseY[i] + mOffY[i] - y, d = Math.hypot(dx, dy);
       if (d < 1e-3) { dx = r() - 0.5; dy = r() - 0.5; d = Math.hypot(dx, dy) || 1; }
-      const nx = dx / d, ny = dy / d, k = CINE.SUCK_V * Uc * Math.exp(-d / (260 * Uc));
+      const nx = dx / d, ny = dy / d, k = CINE.SUCK_V * U * Math.exp(-d / (260 * U));
       velX[i] = -nx * k; velY[i] = -ny * k;
       const a = (r() - 0.5) * CINE.SCATTER, ca = 1 - a * a * 0.5, sa = a;   // small-angle rotation
       const m = cineMatOf(i); cineMatI[i] = m;
-      const u1 = r(), v = CINE.BLAST_V * Uc * MATS[m].k * (0.55 + 0.9 * Math.exp(-d / reach)) * (0.35 + u1 * Math.sqrt(u1));
-      cineVX[i] = (nx * ca - ny * sa) * v; cineVY[i] = (nx * sa + ny * ca) * v; cineDel[i] = d / (CINE.FRONT_V * Uc);
+      const u1 = r(), v = CINE.BLAST_V * U * MATS[m].k * (0.55 + 0.9 * Math.exp(-d / reach)) * (0.35 + u1 * Math.sqrt(u1));
+      cineVX[i] = (nx * ca - ny * sa) * v; cineVY[i] = (nx * sa + ny * ca) * v; cineDel[i] = d / (CINE.FRONT_V * U);
     }
   }
   function cinePrep(dt) {
@@ -125,12 +127,12 @@ export function createActions(api) {
     cine.t += dt;
     if (cine.kind === 'explode') {
       if (cine.t >= CINE.SUCK_S) cine.tb = cine.t - CINE.SUCK_S;
-      for (let j = 0; j < 3; j++) { CINE_LIN[j] = MATS[j].lin * dt; CINE_QUAD[j] = MATS[j].quad / Uc * dt; }   // quad per unit speed: speeds scale with Uc
+      for (let j = 0; j < 3; j++) { CINE_LIN[j] = MATS[j].lin * dt; CINE_QUAD[j] = MATS[j].quad / U * dt; }   // quad per unit speed: speeds scale with U
       cine.curl = cine.tb > CINE.CURL_T0 && cine.tb < CINE.CURL_T1;
       if (cine.curl) {
         if (!curlGX) { curlGX = new Float32Array(CURL_G * CURL_G); curlGY = new Float32Array(CURL_G * CURL_G); }
         curlCW = W / (CURL_G - 1); curlCH = H / (CURL_G - 1);
-        const tb = cine.tb, f = Math.min(1, (tb - CINE.CURL_T0) / 0.25) * (1 - (tb - CINE.CURL_T0) / (CINE.CURL_T1 - CINE.CURL_T0)), k = CINE.CURL_K / Uc, A = CINE.CURL_A * Uc * f * dt;
+        const tb = cine.tb, f = Math.min(1, (tb - CINE.CURL_T0) / 0.25) * (1 - (tb - CINE.CURL_T0) / (CINE.CURL_T1 - CINE.CURL_T0)), k = CINE.CURL_K / U, A = CINE.CURL_A * U * f * dt;
         for (let gy = 0; gy < CURL_G; gy++) for (let gx = 0; gx < CURL_G; gx++) {
           curlGX[gy * CURL_G + gx] = A * Math.sin(gy * curlCH * k + tb * 1.3);
           curlGY[gy * CURL_G + gx] = A * Math.cos(gx * curlCW * k - tb * 1.1);
@@ -177,7 +179,7 @@ export function createActions(api) {
     if (name === 'explode' || name === 'implode') {
       const o = origin(px, py); cineStart(name, o.ox, o.oy);
     } else if (name === 'tornado' || name === 'drain' || name === 'orbit') {
-      const o = origin(px, py); fxCx = o.ox; fxCy = o.oy; clear(); effect = name; reformT = 0;
+      const o = origin(px, py); fxCx = o.ox; fxCy = o.oy; clear(); effect = name; reformT = 0; spinGain = name === 'drain' ? 1 : TWIST_GAIN;
     } else if (name === 'fall' || name === 'rise') {
       const up = name === 'rise', rng = mulberry32((performance.now() * (up ? 6113 : 5039)) | 0);
       for (let i = 0; i < N; i++) {
@@ -188,6 +190,42 @@ export function createActions(api) {
     } else return false;
     return true;
   }
+
+  /* A fast stroke throws the points near it (the iPhone's flickJet, scaled by U). No persistent effect: the points are
+     thrown, then coast on a damped velocity for a moment while the wake return pulls them home. At Dense (1.2M points)
+     one pass over every point costs about a frame, so the throw is applied in FLICK_PASSES interleaved passes (every 4th
+     point), the first on the stroke and one per frame after it, like the homepage's explode impulse. */
+  const FLICK_PASSES = 4;
+  let flickJob = null;
+  function flickPass() {
+    const { x, y, nx, ny, v, R } = flickJob;
+    for (let i = flickJob.pass; i < N; i += FLICK_PASSES) {
+      const dx = baseX[i] + mOffX[i] - x; if (dx >= R || dx <= -R) continue;   // cheap box test first: most points are far away
+      const dy = baseY[i] + mOffY[i] - y; if (dy >= R || dy <= -R) continue;
+      const d = Math.hypot(dx, dy); if (d >= R) continue;
+      const h = ((Math.imul(i, 2246822519) >>> 8) & 1023) / 1023, f = (1 - d / R) * (0.5 + h);
+      velX[i] += nx * v * f + (h - 0.5) * 120 * U;
+      velY[i] += ny * v * f + (((Math.imul(i, 3266489917) >>> 7) & 1023) / 1023 - 0.5) * 120 * U;
+    }
+    if (++flickJob.pass >= FLICK_PASSES) flickJob = null;
+  }
+  function flick(x, y, vx, vy) {
+    if (!refresh()) return;
+    const sp = Math.hypot(vx, vy); if (sp < 1) return;
+    while (flickJob) flickPass();   // a second stroke mid-throw: finish the first one
+    flickJob = { x, y, nx: vx / sp, ny: vy / sp, v: Math.min(1600 * U, sp * 0.9), R: 230 * U, pass: 0 };
+    flickPass(); kickT = 2.4;
+  }
+  /* While the points coast after a throw (no persistent effect running): one tight loop per frame instead of a function
+     call per point. The wake return in the engine's loop pulls them home at the same time. */
+  function kickStep(dt) {
+    const k = velDamp;
+    for (let i = 0; i < N; i++) {
+      const vx = velX[i] * k, vy = velY[i] * k; velX[i] = vx; velY[i] = vy;
+      mOffX[i] += vx * dt; mOffY[i] += vy * dt;
+    }
+  }
+
   function reform() {
     if (!refresh()) return false;
     const wasFall = effect === 'fall';
@@ -206,13 +244,16 @@ export function createActions(api) {
 
   /* per frame, before the point loop */
   function prep(dt) {
-    if (!refresh()) { out.on = false; out.reforming = false; return; }
+    if (!refresh()) { out.on = false; out.kick = false; out.reforming = false; return; }
     out.on = effect !== null;
+    if (kickT > 0) { kickT = Math.max(0, kickT - dt); if (kickT === 0 && effect === null) { velX.fill(0); velY.fill(0); } }
+    out.kick = kickT > 0 && effect === null;
     out.reforming = reformT > 0;
     velDamp = Math.exp(-FX.VEL_DAMP * dt);
     tornRad = Math.min(W, H) * FX.TORNADO_RADIUS_FRAC;
     reformDecay = Math.exp(-FX.REFORM_RATE * dt);
     if (reformT > 0) reformT = Math.max(0, reformT - dt);
+    if (flickJob) flickPass();
     if (cine) cinePrep(dt);
   }
   /* per point, only while an effect runs */
@@ -223,7 +264,7 @@ export function createActions(api) {
       const r = Math.sqrt(dx * dx + dy * dy) || 1, nx = dx / r, ny = dy / r;
       let tvx, tvy, ease;
       if (e === 'tornado') {
-        const gain = Math.exp(-r / tornRad) * U;
+        const gain = Math.exp(-r / tornRad) * U * spinGain;
         tvx = (-ny * FX.TORNADO_SPIN - nx * FX.TORNADO_PULL) * gain;
         tvy = (nx * FX.TORNADO_SPIN - ny * FX.TORNADO_PULL) * gain;
         ease = FX.TORNADO_EASE;
@@ -236,7 +277,7 @@ export function createActions(api) {
         ease = FX.DRAIN_EASE;
       } else {
         // orbit: pure tangential velocity, so each point circles the pivot at its radius (a galaxy swirl)
-        const h = ((Math.imul(i, 40503) >>> 9) & 1023) / 1023, spin = FX.ORBIT_SPIN * U * (0.8 + h * 0.4);
+        const h = ((Math.imul(i, 40503) >>> 9) & 1023) / 1023, spin = FX.ORBIT_SPIN * U * (0.8 + h * 0.4) * spinGain;
         tvx = -ny * spin; tvy = nx * spin; ease = FX.ORBIT_EASE;
       }
       const k = Math.min(1, dt * ease);
@@ -253,6 +294,6 @@ export function createActions(api) {
   /* after apply(): while reforming, ease every offset home instead of the wake return */
   function settle(i) { mOffX[i] *= reformDecay; mOffY[i] *= reformDecay; }
 
-  return { fire, reform, prep, apply, settle, clear, state: out,
+  return { fire, flick, kickStep, reform, prep, apply, settle, clear, state: out,
     get effect() { return effect; } };
 }
