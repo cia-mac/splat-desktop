@@ -12,7 +12,7 @@ const REDUCE = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-
 
 const STEPS = [
   { id: 'swirl',  demo: 'sweep', say: 'move the mouse through the points',
-    hint: 'no button needed: slow moves swirl the points, a fast stroke throws them' },
+    hint: 'no button needed: the points swirl with the pointer (hold Option for a fast throw)' },
   { id: 'push',   demo: 'push',  say: 'hold the left button and sweep to push them away',
     hint: 'press and hold the left button, then drag across the field' },
   { id: 'attract', demo: 'pull', keys: ['shift'], say: 'hold shift and the left button still and the points gather to it',

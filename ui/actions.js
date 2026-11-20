@@ -204,8 +204,8 @@ export function createActions(api) {
       const dy = baseY[i] + mOffY[i] - y; if (dy >= R || dy <= -R) continue;
       const d = Math.hypot(dx, dy); if (d >= R) continue;
       const h = ((Math.imul(i, 2246822519) >>> 8) & 1023) / 1023, f = (1 - d / R) * (0.5 + h);
-      velX[i] += nx * v * f + (h - 0.5) * 120 * U;
-      velY[i] += ny * v * f + (((Math.imul(i, 3266489917) >>> 7) & 1023) / 1023 - 0.5) * 120 * U;
+      velX[i] += nx * v * f + (h - 0.5) * 80 * U;
+      velY[i] += ny * v * f + (((Math.imul(i, 3266489917) >>> 7) & 1023) / 1023 - 0.5) * 80 * U;
     }
     if (++flickJob.pass >= FLICK_PASSES) flickJob = null;
   }
@@ -213,7 +213,8 @@ export function createActions(api) {
     if (!refresh()) return;
     const sp = Math.hypot(vx, vy); if (sp < 1) return;
     while (flickJob) flickPass();   // a second stroke mid-throw: finish the first one
-    flickJob = { x, y, nx: vx / sp, ny: vy / sp, v: Math.min(1600 * U, sp * 0.9), R: 230 * U, pass: 0 };
+    // smaller and gentler than the iPhone's jet (reach 230, cap 1600, 0.9 of the stroke speed; here reach 100, cap 900, 0.55): a mouse stroke is not a finger swipe
+    flickJob = { x, y, nx: vx / sp, ny: vy / sp, v: Math.min(900 * U, sp * 0.55), R: 100 * U, pass: 0 };
     flickPass(); kickT = 2.4;
   }
   /* While the points coast after a throw (no persistent effect running): one tight loop per frame instead of a function

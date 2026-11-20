@@ -384,8 +384,9 @@ const FLICK_V = 1467, FLICK_GAP_MS = 350;   // a stroke faster than this (the iP
    queues mouse events that then arrive back to back, and a per-event speed would read them as a huge jump. */
 const SPEED_WIN_MS = 80, SPEED_MIN_SPAN_MS = 16, SPEED_CAP = FLICK_V * 4;
 let lastFlick = 0;
-/* The throw fires when a fast stroke ENDS, at the pointer, with the stroke's fastest velocity: the iPhone throws at finger
-   release, so the points thrown are the ones where the pointer finished, not where it began. */
+/* The throw is a deliberate gesture: a fast stroke with Option held. It fires when the stroke ENDS, at the pointer, with the
+   stroke's fastest velocity (the iPhone throws at finger release). It must never fire from plain hovering: measured, a stroke
+   of 2 picture-widths per second, an ordinary mouse move, emptied 65 to 77% of the points around the pointer. */
 const stroke = { sp: 0, vx: 0, vy: 0 };
 const PULL_R_RATIO = 260 / 180;   // the iPhone's hold-pull reaches 260 units against its 180-unit stir radius
 function resetPointer() { mouse.active = false; mouse.vx = 0; mouse.vy = 0; mouse.t = 0; mouse.hist.length = 0; stroke.sp = 0; }
@@ -447,11 +448,11 @@ addEventListener('mousemove', e => {
     mouse.vx += (vx - mouse.vx) * 0.5; mouse.vy += (vy - mouse.vy) * 0.5;
   }
   mouse.t = now; mouse.x = w.x; mouse.y = w.y; mouse.active = true;
-  if (!mouse.left && !mouse.pull && !armed) {
+  if (!mouse.left && !mouse.pull && !armed && e.altKey) {   // a throw is deliberate: a fast stroke with Option held
     const sp = Math.hypot(mouse.vx, mouse.vy);
     if (sp > FLICK_V * um && sp > stroke.sp) { stroke.sp = sp; stroke.vx = mouse.vx; stroke.vy = mouse.vy; }   // the fastest moment so far
     else if (stroke.sp > 0 && sp < stroke.sp * 0.5) endStroke(now);                                            // it has slowed to half: the stroke is over
-  } else stroke.sp = 0;
+  } else if (stroke.sp > 0) { if (e.altKey && (mouse.left || mouse.pull || armed)) stroke.sp = 0; else endStroke(now); }   // Option let go: that is the release
 });
 addEventListener('mouseleave', resetPointer);
 addEventListener('blur', () => { mouse.left = false; mouse.pull = false; resetPointer(); });
@@ -916,6 +917,7 @@ const guide = initGuide({
 /* ═══════════════ INIT CONTROLS ON LOAD ═══════════════ */
 buildControls();
 loadSample(); // open on the bird, like the homepage; dropping a video replaces it
+
 
 
 
