@@ -69,7 +69,7 @@ export function createActions(api) {
     return true;
   }
   function clear() {
-    effect = null; cine = null; kickT = 0; flickJob = null;
+    effect = null; cine = null; kickT = 0; flickJob = null; impulseJob = null;
     const cv = api.canvas && api.canvas();
     if (cv && cv.style.transform) cv.style.transform = '';
     look.b = 1; look.z = 1; look.tint = [1, 1, 1];
@@ -148,31 +148,6 @@ export function createActions(api) {
       else if (cv.style.transform) cv.style.transform = '';
     }
   }
-  function cineStep(i, dt) {
-    if (cine.kind === 'explode') {
-      const tb = cine.tb;
-      if (tb < 0) return;                                   // intake
-      const del = cineDel[i];
-      if (del >= 0) { if (tb < del) { velX[i] *= 0.9; velY[i] *= 0.9; return; } velX[i] = cineVX[i]; velY[i] = cineVY[i]; cineDel[i] = -1; }   // the front arrives
-      const m = cineMatI[i], vx = velX[i], vy = velY[i];
-      const x = CINE_LIN[m] + CINE_QUAD[m] * Math.sqrt(vx * vx + vy * vy), k = 1 / (1 + x + 0.5 * x * x);
-      let nx = vx * k, ny = vy * k;
-      if (m === 0 && cine.curl) {   // smoke: nearest cell of the frame's curl grid
-        let gx = ((baseX[i] + mOffX[i]) / curlCW + 0.5) | 0, gy = ((baseY[i] + mOffY[i]) / curlCH + 0.5) | 0;
-        gx = gx < 0 ? 0 : gx >= CURL_G ? CURL_G - 1 : gx; gy = gy < 0 ? 0 : gy >= CURL_G ? CURL_G - 1 : gy;
-        nx += curlGX[gy * CURL_G + gx]; ny += curlGY[gy * CURL_G + gx];
-      }
-      velX[i] = nx; velY[i] = ny;
-      return;
-    }
-    // eased well: from the start position, rotate by share x spin and scale toward the tap by share x ease
-    const sx = baseX[i] + cineVX[i] - cine.ox, sy = baseY[i] + cineVY[i] - cine.oy;
-    const pr = cineEase((cine.t - WELL.D * cineDel[i]) / WELL.T), k = 1 - pr * (1 - WELL.KEEP);
-    const an = WELL.SPIN * pr, a2 = an * an, ca = 1 - a2 * 0.5 + a2 * a2 / 24, sa = an * (1 - a2 / 6);
-    mOffX[i] = cine.ox + (sx * ca - sy * sa) * k - baseX[i]; mOffY[i] = cine.oy + (sx * sa + sy * ca) * k - baseY[i];
-    velX[i] = 0; velY[i] = 0;
-  }
-
   /* ---------- the homepage's actions ---------- */
   function fire(name, px, py) {
     if (!refresh()) return false;
@@ -181,16 +156,27 @@ export function createActions(api) {
     } else if (name === 'tornado' || name === 'drain' || name === 'orbit') {
       const o = origin(px, py); fxCx = o.ox; fxCy = o.oy; clear(); effect = name; reformT = 0; spinGain = name === 'drain' ? 1 : TWIST_GAIN;
     } else if (name === 'fall' || name === 'rise') {
-      const up = name === 'rise', rng = mulberry32((performance.now() * (up ? 6113 : 5039)) | 0);
-      for (let i = 0; i < N; i++) {
-        velX[i] += (rng() - 0.5) * 130 * U;
-        velY[i] += up ? -(rng() * rng() * 220 + 30) * U : (rng() * rng() * 220 - 30) * U;
-      }
+      const up = name === 'rise';
       clear(); effect = name; reformT = 0;
+      impulseJob = { up, salt: (performance.now() * 2654435) | 0, pass: 0 };   // the scatter is spread over a few frames (see impulsePass)
+      impulsePass();
     } else return false;
     return true;
   }
 
+  /* fall / rise start with a random scatter on every point. Applied in IMPULSE_PASSES interleaved passes (every 4th point), the
+     first on the click and one per frame after, so the click costs a quarter of a pass; the randoms are per-point hashes. */
+  const IMPULSE_PASSES = 4;
+  let impulseJob = null;
+  function impulsePass() {
+    const { up, salt, pass } = impulseJob, sx = 130 * U, sy = 220 * U, oy = 30 * U;
+    for (let i = pass; i < N; i += IMPULSE_PASSES) {
+      const a = ((Math.imul(i ^ salt, 2246822519) >>> 8) & 1023) / 1023, b = ((Math.imul(i + salt, 3266489917) >>> 7) & 1023) / 1023, c = ((Math.imul(i * 3 + salt, 668265263) >>> 9) & 1023) / 1023;
+      velX[i] += (a - 0.5) * sx;
+      velY[i] += up ? -(b * c * sy + oy) : (b * c * sy - oy);
+    }
+    if (++impulseJob.pass >= IMPULSE_PASSES) impulseJob = null;
+  }
   /* A fast stroke throws the points near it (the iPhone's flickJet, scaled by U). No persistent effect: the points are
      thrown, then coast on a damped velocity for a moment while the wake return pulls them home. At Dense (1.2M points)
      one pass over every point costs about a frame, so the throw is applied in FLICK_PASSES interleaved passes (every 4th
@@ -255,46 +241,90 @@ export function createActions(api) {
     reformDecay = Math.exp(-FX.REFORM_RATE * dt);
     if (reformT > 0) reformT = Math.max(0, reformT - dt);
     if (flickJob) flickPass();
+    if (impulseJob) impulsePass();
     if (cine) cinePrep(dt);
   }
-  /* per point, only while an effect runs */
-  function apply(i, dt) {
+  /* One tight loop per effect (no per-point function call or branch), run after the mouse pass: each point is independent,
+     so this is the same maths as doing mouse, effect and wake return point by point. */
+  function stepAll(dt) {
     const e = effect;
-    if (e === 'tornado' || e === 'drain' || e === 'orbit') {
-      const dx = (baseX[i] + mOffX[i]) - fxCx, dy = (baseY[i] + mOffY[i]) - fxCy;
-      const r = Math.sqrt(dx * dx + dy * dy) || 1, nx = dx / r, ny = dy / r;
-      let tvx, tvy, ease;
-      if (e === 'tornado') {
-        const gain = Math.exp(-r / tornRad) * U * spinGain;
-        tvx = (-ny * FX.TORNADO_SPIN - nx * FX.TORNADO_PULL) * gain;
-        tvy = (nx * FX.TORNADO_SPIN - ny * FX.TORNADO_PULL) * gain;
-        ease = FX.TORNADO_EASE;
-      } else if (e === 'drain') {
+    if (e === 'tornado') {
+      const k = Math.min(1, dt * FX.TORNADO_EASE), gu = U * spinGain, invR = 1 / tornRad, SP = FX.TORNADO_SPIN, PU = FX.TORNADO_PULL;
+      for (let i = 0; i < N; i++) {
+        const dx = baseX[i] + mOffX[i] - fxCx, dy = baseY[i] + mOffY[i] - fxCy;
+        const r = Math.sqrt(dx * dx + dy * dy) || 1, nx = dx / r, ny = dy / r, g = Math.exp(-r * invR) * gu;
+        const vx = velX[i] + ((-ny * SP - nx * PU) * g - velX[i]) * k, vy = velY[i] + ((nx * SP - ny * PU) * g - velY[i]) * k;
+        velX[i] = vx; velY[i] = vy; mOffX[i] += vx * dt; mOffY[i] += vy * dt;
+      }
+    } else if (e === 'drain') {
+      const k = Math.min(1, dt * FX.DRAIN_EASE), SP = FX.DRAIN_SPIN * U, PU = FX.DRAIN_PULL * U;
+      for (let i = 0; i < N; i++) {
+        const dx = baseX[i] + mOffX[i] - fxCx, dy = baseY[i] + mOffY[i] - fxCy;
+        const r = Math.sqrt(dx * dx + dy * dy) || 1, nx = dx / r, ny = dy / r;
         // per-point stable randomness so the drain churns instead of spinning like clockwork
         const h1 = ((Math.imul(i, 2246822519) >>> 8) & 1023) / 1023, h2 = ((Math.imul(i, 3266489917) >>> 7) & 1023) / 1023;
-        const spin = FX.DRAIN_SPIN * U * (0.62 + h1 * 0.76), pull = FX.DRAIN_PULL * U * (0.55 + h2 * 0.90), wob = (h1 - h2) * 0.5;
+        const spin = SP * (0.62 + h1 * 0.76), pull = PU * (0.55 + h2 * 0.90), wob = (h1 - h2) * 0.5;
         const wnx = nx + ny * wob, wny = ny - nx * wob;
-        tvx = -wny * spin - wnx * pull; tvy = wnx * spin - wny * pull;
-        ease = FX.DRAIN_EASE;
-      } else {
-        // orbit: pure tangential velocity, so each point circles the pivot at its radius (a galaxy swirl)
-        const h = ((Math.imul(i, 40503) >>> 9) & 1023) / 1023, spin = FX.ORBIT_SPIN * U * (0.8 + h * 0.4) * spinGain;
-        tvx = -ny * spin; tvy = nx * spin; ease = FX.ORBIT_EASE;
+        const vx = velX[i] + ((-wny * spin - wnx * pull) - velX[i]) * k, vy = velY[i] + ((wnx * spin - wny * pull) - velY[i]) * k;
+        velX[i] = vx; velY[i] = vy; mOffX[i] += vx * dt; mOffY[i] += vy * dt;
       }
-      const k = Math.min(1, dt * ease);
-      velX[i] += (tvx - velX[i]) * k; velY[i] += (tvy - velY[i]) * k;
+    } else if (e === 'orbit') {
+      // pure tangential velocity, so each point circles the pivot at its radius (a galaxy swirl)
+      const k = Math.min(1, dt * FX.ORBIT_EASE), SP = FX.ORBIT_SPIN * U * spinGain;
+      for (let i = 0; i < N; i++) {
+        const dx = baseX[i] + mOffX[i] - fxCx, dy = baseY[i] + mOffY[i] - fxCy;
+        const r = Math.sqrt(dx * dx + dy * dy) || 1, nx = dx / r, ny = dy / r;
+        const h = ((Math.imul(i, 40503) >>> 9) & 1023) / 1023, spin = SP * (0.8 + h * 0.4);
+        const vx = velX[i] + (-ny * spin - velX[i]) * k, vy = velY[i] + (nx * spin - velY[i]) * k;
+        velX[i] = vx; velY[i] = vy; mOffX[i] += vx * dt; mOffY[i] += vy * dt;
+      }
     } else if (e === 'fall' || e === 'rise') {
-      const h = ((Math.imul(i, 2654435761) >>> 8) & 1023) / 1023, g = FX.GRAVITY * U * (0.5 + h * 1.1) * dt;
-      velY[i] += e === 'fall' ? g : -g;
-      velX[i] += (h - 0.5) * 26 * U * dt;
-      velX[i] *= velDamp; velY[i] *= velDamp;
-    } else if (cine) cineStep(i, dt);
-    else { velX[i] *= velDamp; velY[i] *= velDamp; }
-    mOffX[i] += velX[i] * dt; mOffY[i] += velY[i] * dt;
+      const sgn = e === 'fall' ? 1 : -1, G = FX.GRAVITY * U * dt * sgn, DX = 26 * U * dt, kd = velDamp;
+      for (let i = 0; i < N; i++) {
+        const h = ((Math.imul(i, 2654435761) >>> 8) & 1023) / 1023;
+        const vy = (velY[i] + G * (0.5 + h * 1.1)) * kd, vx = (velX[i] + (h - 0.5) * DX) * kd;
+        velX[i] = vx; velY[i] = vy; mOffX[i] += vx * dt; mOffY[i] += vy * dt;
+      }
+    } else if (cine && cine.kind === 'explode') {
+      const tb = cine.tb;
+      if (tb < 0) {   // intake
+        for (let i = 0; i < N; i++) { mOffX[i] += velX[i] * dt; mOffY[i] += velY[i] * dt; }
+        return;
+      }
+      const curl = cine.curl && curlGX, cw = curlCW, ch = curlCH;
+      for (let i = 0; i < N; i++) {
+        let vx = velX[i], vy = velY[i];
+        const del = cineDel[i];
+        if (del >= 0) {
+          if (tb < del) { vx *= 0.9; vy *= 0.9; velX[i] = vx; velY[i] = vy; mOffX[i] += vx * dt; mOffY[i] += vy * dt; continue; }   // waiting for the front
+          vx = cineVX[i]; vy = cineVY[i]; cineDel[i] = -1;   // the front arrives
+        }
+        const m = cineMatI[i], x = CINE_LIN[m] + CINE_QUAD[m] * Math.sqrt(vx * vx + vy * vy), k = 1 / (1 + x + 0.5 * x * x);
+        vx *= k; vy *= k;
+        if (m === 0 && curl) {   // smoke: nearest cell of the frame's curl grid
+          let gx = ((baseX[i] + mOffX[i]) / cw + 0.5) | 0, gy = ((baseY[i] + mOffY[i]) / ch + 0.5) | 0;
+          gx = gx < 0 ? 0 : gx >= CURL_G ? CURL_G - 1 : gx; gy = gy < 0 ? 0 : gy >= CURL_G ? CURL_G - 1 : gy;
+          vx += curlGX[gy * CURL_G + gx]; vy += curlGY[gy * CURL_G + gx];
+        }
+        velX[i] = vx; velY[i] = vy; mOffX[i] += vx * dt; mOffY[i] += vy * dt;
+      }
+    } else if (cine) {   // implode: eased well, from the start position, rotate by share x spin and scale toward the tap by share x ease
+      const ox = cine.ox, oy = cine.oy, t = cine.t;
+      for (let i = 0; i < N; i++) {
+        const sx = baseX[i] + cineVX[i] - ox, sy = baseY[i] + cineVY[i] - oy;
+        const pr = cineEase((t - WELL.D * cineDel[i]) / WELL.T), k = 1 - pr * (1 - WELL.KEEP);
+        const an = WELL.SPIN * pr, a2 = an * an, ca = 1 - a2 * 0.5 + a2 * a2 / 24, sa = an * (1 - a2 / 6);
+        mOffX[i] = ox + (sx * ca - sy * sa) * k - baseX[i]; mOffY[i] = oy + (sx * sa + sy * ca) * k - baseY[i];
+        velX[i] = 0; velY[i] = 0;
+      }
+    } else {
+      const k = velDamp;
+      for (let i = 0; i < N; i++) { const vx = velX[i] * k, vy = velY[i] * k; velX[i] = vx; velY[i] = vy; mOffX[i] += vx * dt; mOffY[i] += vy * dt; }
+    }
   }
-  /* after apply(): while reforming, ease every offset home instead of the wake return */
-  function settle(i) { mOffX[i] *= reformDecay; mOffY[i] *= reformDecay; }
+  /* while reforming, ease every offset home instead of the wake return */
+  function settleAll() { const k = reformDecay; for (let i = 0; i < N; i++) { mOffX[i] *= k; mOffY[i] *= k; } }
 
-  return { fire, flick, kickStep, reform, prep, apply, settle, clear, state: out,
+  return { fire, flick, kickStep, reform, prep, stepAll, settleAll, clear, state: out,
     get effect() { return effect; } };
 }

@@ -471,14 +471,13 @@ addEventListener('contextmenu', e => { if (running) e.preventDefault(); });
 /* Mouse still runs on CPU but only updates the offset attribute.
    Turbulence is fully GPU. This is the right split: mouse affects
    a small radius of particles, turbulence affects all. */
+let settled = false, lastOffArr = null;
 function updateMouseOffsets(dt) {
   const offAttr = geom.getAttribute('aMouseOff');
   const offArr = offAttr.array;
-  let dirty = false;
 
   fx.prep(dt);
   const fxOn = fx.state.on, fxKick = fx.state.kick, fxReform = fx.state.reforming;
-  if (fxOn || fxKick || fxReform) dirty = true;
 
   // the pointer's velocity fades when it stops moving; everything is scaled to the window like the iPhone's
   if (stroke.sp > 0 && performance.now() - mouse.t > 60) endStroke(performance.now());
@@ -488,50 +487,58 @@ function updateMouseOffsets(dt) {
   const stir = Math.min(1, Math.hypot(mouse.vx, mouse.vy) / (TOUCH_STIR_V * um));
   const wakeFar = WAKE_THRESHOLD * um;   // 'far from home' (slow return) is a share of the window, not a fixed 3 units
 
-  for (let i = 0; i < N; i++) {
-    // Mouse interaction
-    if (mouse.active) {
-      const curX = baseX[i], curY = baseY[i];
-      const ddx = curX + mOffX[i] - mouse.x;
-      const ddy = curY + mOffY[i] - mouse.y;
+  // 1. the pointer's forces (box test first: most points are far from it)
+  let touched = false;
+  if (mouse.active) {
+    const mx = mouse.x, my = mouse.y, vx = mouse.vx, vy = mouse.vy, pull = mouse.pull, left = mouse.left;
+    const core = HOLD_CORE * um, pullK = HOLD_PULL * um * dt * 4, pushK = MOUSE_PUSH * um * dt * 4;
+    const swirlK = SWIRL_STRENGTH * um * dt * 4 * stir, inwardK = SWIRL_INWARD * um * dt * 4 * stir, dragK = TOUCH_DRAG * dt;
+    for (let i = 0; i < N; i++) {
+      const ddx = baseX[i] + mOffX[i] - mx; if (ddx >= R || ddx <= -R) continue;
+      const ddy = baseY[i] + mOffY[i] - my; if (ddy >= R || ddy <= -R) continue;
       const dist = Math.sqrt(ddx * ddx + ddy * ddy);
       if (dist < R && dist > 0.5) {
-        const nx = ddx / dist, ny = ddy / dist;
-        const fo = 1 - dist / R;
-        if (mouse.pull) {
+        const nx = ddx / dist, ny = ddy / dist, fo = 1 - dist / R;
+        touched = true;
+        if (pull) {
           // the iPhone's hold-pull: straight in, gentler with distance, into a small band so the points never overshoot
-          const core = HOLD_CORE * um;
-          if (dist > core) { const f = Math.min(dist - core, fo * fo * HOLD_PULL * um * dt * 4); mOffX[i] -= nx * f; mOffY[i] -= ny * f; }
-        } else if (mouse.left) {
-          const f = fo * MOUSE_PUSH * um * dt * 4;
+          if (dist > core) { const f = Math.min(dist - core, fo * fo * pullK); mOffX[i] -= nx * f; mOffY[i] -= ny * f; }
+        } else if (left) {
+          const f = fo * pushK;
           mOffX[i] += nx * f; mOffY[i] += ny * f;
         } else {
           // hover is the finger on the glass: the swirl follows the pointer's speed, and the points it passes inherit its velocity
-          const sf = fo * SWIRL_STRENGTH * um * dt * 4 * stir, inf = fo * SWIRL_INWARD * um * dt * 4 * stir, dk = fo * fo * TOUCH_DRAG * dt;
-          mOffX[i] += -ny * sf - nx * inf + mouse.vx * dk;
-          mOffY[i] += nx * sf - ny * inf + mouse.vy * dk;
+          const sf = fo * swirlK, inf = fo * inwardK, dk = fo * fo * dragK;
+          mOffX[i] += -ny * sf - nx * inf + vx * dk;
+          mOffY[i] += nx * sf - ny * inf + vy * dk;
         }
       }
     }
-
-    // Actions integrate velocity into the offsets; while one runs the wake return is suspended, and a reset
-    // eases every offset home instead (the homepage's rule).
-    if (fxOn) fx.apply(i, dt);
-    if (fxReform) fx.settle(i);
-
-    // Wake return (decay offset back to zero)
-    const disp = Math.sqrt(mOffX[i] * mOffX[i] + mOffY[i] * mOffY[i]);
-    if (!fxOn && !fxReform && disp > 0.01) {
-      const decay = Math.exp(-(disp > wakeFar ? WAKE_RETURN : RETURN_SPEED) * dt);
-      mOffX[i] *= decay; mOffY[i] *= decay;
-      dirty = true;
-    }
-
-    offArr[i * 2] = mOffX[i];
-    offArr[i * 2 + 1] = mOffY[i];
   }
 
-  if (dirty || mouse.active) {
+  // 2. actions integrate velocity into the offsets; while one runs the wake return is suspended, and a reset
+  //    eases every offset home instead (the homepage's rule).
+  if (fxOn) fx.stepAll(dt);
+  else if (fxReform) fx.settleAll();
+
+  // 3. wake return (decay offset back to zero) and copy to the GPU attribute. A field at rest with nothing touching it
+  //    skips this whole pass (and the upload) until something moves it.
+  if (offArr !== lastOffArr) { lastOffArr = offArr; settled = false; }
+  if (fxOn || fxKick || fxReform || touched || !settled) {
+    let any = false;
+    if (fxOn || fxReform) {
+      for (let i = 0; i < N; i++) { offArr[i * 2] = mOffX[i]; offArr[i * 2 + 1] = mOffY[i]; }
+    } else {
+      for (let i = 0; i < N; i++) {
+        const ox = mOffX[i], oy = mOffY[i], disp = Math.sqrt(ox * ox + oy * oy);
+        if (disp > 0.01) {
+          const decay = Math.exp(-(disp > wakeFar ? WAKE_RETURN : RETURN_SPEED) * dt);
+          mOffX[i] = ox * decay; mOffY[i] = oy * decay; any = true;
+        }
+        offArr[i * 2] = mOffX[i]; offArr[i * 2 + 1] = mOffY[i];
+      }
+    }
+    settled = !(fxOn || fxKick || fxReform) && !any;
     offAttr.needsUpdate = true;
   }
 }
@@ -918,6 +925,7 @@ const guide = initGuide({
 /* ═══════════════ INIT CONTROLS ON LOAD ═══════════════ */
 buildControls();
 loadSample(); // open on the bird, like the homepage; dropping a video replaces it
+
 
 
 
