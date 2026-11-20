@@ -1,5 +1,6 @@
 import * as THREE from './vendor/three.module.js';
 import { initGuide } from './guide.js';
+import { createActions } from './actions.js';
 
 /* ═══════════════ TAURI API ═══════════════ */
 const isTauri = !!window.__TAURI_INTERNALS__;
@@ -38,6 +39,7 @@ const VERT = `
 
   uniform float uPixelRatio;
   uniform float uBrightness;
+  uniform float uSize;   // 1 normally; the explode swells the points for a moment
   uniform float uTime;
   uniform float uTurbAmp;
   uniform float uTurbSpeed;
@@ -79,7 +81,7 @@ const VERT = `
     p.y += -dy - aMouseOff.y;
 
     gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
-    gl_PointSize = aSize * uPixelRatio;
+    gl_PointSize = aSize * uPixelRatio * uSize;
   }
 `;
 
@@ -88,6 +90,7 @@ const FRAG = `
   uniform sampler2D uVideo;
   uniform float uOpacity;
   uniform float uGaussExp;
+  uniform vec3 uTint;    // white normally; the explode is white-hot, cooling through orange
   varying vec2 vUV;
   varying float vBright;
 
@@ -96,7 +99,7 @@ const FRAG = `
     float r2 = dot(d, d) * 4.0;
     float alpha = exp(-r2 * uGaussExp) * uOpacity;
     if (alpha < 0.005) discard;
-    vec3 col = texture2D(uVideo, vUV).rgb;
+    vec3 col = texture2D(uVideo, vUV).rgb * uTint;
     gl_FragColor = vec4(col * vBright * alpha, alpha);
   }
 `;
@@ -261,6 +264,8 @@ function initApp(v, name) {
       uVideo: { value: videoTex },
       uOpacity: { value: OPACITY },
       uBrightness: { value: BRIGHTNESS },
+      uSize: { value: 1 },
+      uTint: { value: new THREE.Vector3(1, 1, 1) },
       uGaussExp: { value: 5.0 },
       uPixelRatio: { value: Math.min(devicePixelRatio, 2) },
       uTime: { value: 0 },
@@ -365,7 +370,31 @@ function buildParticles() {
 }
 
 /* ═══════════════ MOUSE ═══════════════ */
-const mouse = { x: -9999, y: -9999, active: false, left: false, right: false };
+const mouse = { x: -9999, y: -9999, active: false, left: false, pull: false };
+
+/* ═══════════════ ACTIONS (explode, implode, tornado, drain, orbit, fall, rise, reset) ═══════════════ */
+const fx = createActions({
+  field: () => ({ N, baseX, baseY, mOffX, mOffY, W: vidW, H: vidH }),
+  canvas: () => renderer && renderer.domElement,
+});
+const ARMED_TOOLS = ['explode', 'implode', 'tornado', 'drain', 'orbit'];   // arm one, then click the field
+let armed = null;
+/* Every fired action is announced, so the guide (and anything else) can follow what the user really did */
+function announce(name) { window.dispatchEvent(new CustomEvent('pf-action', { detail: name })); }
+function fireAt(name, clientX, clientY) {
+  const w = screenToWorld(clientX, clientY);
+  if (fx.fire(name, w.x, w.y)) announce(name);
+}
+function fireInstant(name) { if (name === 'reform' ? fx.reform() : fx.fire(name)) announce(name); }
+function paintArmed() {
+  document.body.classList.toggle('pf-armed', !!armed);
+  document.querySelectorAll('#fx-grid button[data-arm]').forEach(b => b.classList.toggle('armed', b.dataset.arm === armed));
+  const st = document.getElementById('fx-status');
+  if (st) st.textContent = armed ? armed + ' armed: click the field. esc to stop.'
+    : 'right-click explodes. arm a tool, then click the field. fall, rise and reset are instant.';
+}
+function setArmed(name) { armed = armed === name ? null : name; paintArmed(); }
+const onChrome = t => !!(t && t.closest && t.closest('#controls, #ctrl-toggle, #pf-guide, #upload-overlay'));
 
 function screenToWorld(sx, sy) {
   // Map screen coords (relative to window origin) into the orthographic world.
@@ -387,8 +416,16 @@ addEventListener('mousemove', e => {
   mouse.x = w.x; mouse.y = w.y; mouse.active = true;
 });
 addEventListener('mouseleave', () => { mouse.active = false; });
-addEventListener('mousedown', e => { if (e.button === 0) mouse.left = true; if (e.button === 2) mouse.right = true; });
-addEventListener('mouseup', e => { if (e.button === 0) mouse.left = false; if (e.button === 2) mouse.right = false; });
+/* Mouse (D-0827, D-0831): left-hold pushes, shift + left-hold pulls in, a right click explodes at the pointer with no
+   arming, and with a tool armed a left click fires it there instead. */
+addEventListener('mousedown', e => {
+  if (!running || onChrome(e.target)) return;
+  if (e.button === 2) { fireAt('explode', e.clientX, e.clientY); return; }
+  if (e.button !== 0) return;
+  if (armed) { fireAt(armed, e.clientX, e.clientY); return; }
+  if (e.shiftKey) mouse.pull = true; else mouse.left = true;
+});
+addEventListener('mouseup', e => { if (e.button === 0) { mouse.left = false; mouse.pull = false; } });
 addEventListener('contextmenu', e => { if (running) e.preventDefault(); });
 
 /* Mouse still runs on CPU but only updates the offset attribute.
@@ -398,6 +435,10 @@ function updateMouseOffsets(dt) {
   const offAttr = geom.getAttribute('aMouseOff');
   const offArr = offAttr.array;
   let dirty = false;
+
+  fx.prep(dt);
+  const fxOn = fx.state.on, fxReform = fx.state.reforming;
+  if (fxOn || fxReform) dirty = true;
 
   for (let i = 0; i < N; i++) {
     // Mouse interaction
@@ -409,7 +450,7 @@ function updateMouseOffsets(dt) {
       if (dist < MOUSE_RADIUS && dist > 0.5) {
         const nx = ddx / dist, ny = ddy / dist;
         const fo = 1 - dist / MOUSE_RADIUS;
-        if (mouse.right) {
+        if (mouse.pull) {
           const f = fo * ATTRACT_STRENGTH * dt * 4;
           mOffX[i] -= nx * f; mOffY[i] -= ny * f;
         } else if (mouse.left) {
@@ -424,9 +465,14 @@ function updateMouseOffsets(dt) {
       }
     }
 
+    // Actions integrate velocity into the offsets; while one runs the wake return is suspended, and a reset
+    // eases every offset home instead (the homepage's rule).
+    if (fxOn) fx.apply(i, dt);
+    if (fxReform) fx.settle(i);
+
     // Wake return (decay offset back to zero)
     const disp = Math.sqrt(mOffX[i] * mOffX[i] + mOffY[i] * mOffY[i]);
-    if (disp > 0.01) {
+    if (!fxOn && !fxReform && disp > 0.01) {
       const decay = Math.exp(-(disp > WAKE_THRESHOLD ? WAKE_RETURN : RETURN_SPEED) * dt);
       mOffX[i] *= decay; mOffY[i] *= decay;
       dirty = true;
@@ -460,6 +506,12 @@ function tick() {
   // Only CPU work: mouse offsets
   updateMouseOffsets(dt);
 
+  // The explode's light (flash, swell, white-hot tint) rides on top of the user's own brightness
+  const lk = fx.state.look;
+  mat.uniforms.uBrightness.value = BRIGHTNESS * lk.b;
+  mat.uniforms.uSize.value = lk.z;
+  mat.uniforms.uTint.value.set(lk.tint[0], lk.tint[1], lk.tint[2]);
+
   renderer.render(scene, camera);
 
   frames++; fpsT += dt;
@@ -481,7 +533,7 @@ addEventListener('keydown', e => {
   if (!running) return;
   if (e.key === ' ') { e.preventDefault(); toggleVideoPause(); }
   if (e.key === 'r' || e.key === 'R') { e.preventDefault(); toggleRecord(); }
-  if (e.key === 'Escape') { togglePanel(); }
+  if (e.key === 'Escape') { if (armed) setArmed(armed); else togglePanel(); }   // esc stops an armed tool first
 });
 
 let videoPaused = false;
@@ -558,6 +610,39 @@ function buildControls() {
     row.appendChild(sl);
     sec.appendChild(row);
     return { slider: sl, valEl: v };
+  }
+
+  /* Actions: arm a tool then click the field (explode also on right-click); fall, rise and reset are instant.
+     Icons are the homepage's. */
+  if (hasVideo) {
+    const svg = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+    const ACTIONS = [
+      ['explode', 'arm', svg('<path d="M12 2v5M12 17v5M2 12h5M17 12h5M4.9 4.9l3 3M16.1 16.1l3 3M19.1 4.9l-3 3M7.9 16.1l-3 3"/>')],
+      ['implode', 'arm', svg('<path d="M4 4l5 5M9 4H4v5M20 4l-5 5M15 4h5v5M4 20l5-5M9 20H4v-5M20 20l-5-5M15 20h5v-5"/>')],
+      ['tornado', 'arm', svg('<path d="M3 4h18M5 8h13M8 12h9M11 16h5M13 20h2"/>')],
+      ['drain', 'arm', svg('<path d="M20 12a8 8 0 1 1-5.3-7.5M12 6a6 6 0 1 0 6 6 4 4 0 0 0-7-2.6"/>')],
+      ['orbit', 'arm', svg('<ellipse cx="12" cy="12" rx="9.5" ry="4" transform="rotate(-22 12 12)"/><circle cx="12" cy="12" r="2.3" fill="currentColor" stroke="none"/>')],
+      ['fall', 'now', svg('<path d="M12 4v14M6 12l6 6 6-6"/>')],
+      ['rise', 'now', svg('<path d="M12 20V6M6 12l6-6 6 6"/>')],
+      ['reform', 'now', svg('<path d="M21 12a9 9 0 1 1-2.6-6.3M21 4v5h-5"/>'), 'reset'],
+    ];
+    const aSecX = addSection('actions');
+    const grid = document.createElement('div'); grid.id = 'fx-grid';
+    ACTIONS.forEach(([name, kind, icon, label]) => {
+      const b = document.createElement('button'); b.type = 'button';
+      b.innerHTML = icon + '<span>' + (label || name) + '</span>';
+      if (kind === 'arm') b.dataset.arm = name; else b.dataset.act = name;
+      if (name === 'reform') b.classList.add('fx-reset');
+      b.addEventListener('click', () => {
+        b.blur();
+        if (kind === 'arm') setArmed(name);
+        else { if (armed) setArmed(armed); fireInstant(name); }
+      });
+      grid.appendChild(b);
+    });
+    aSecX.appendChild(grid);
+    const st = document.createElement('div'); st.id = 'fx-status'; aSecX.appendChild(st);
+    paintArmed();
   }
 
   const pSec = addSection('particles');
@@ -753,6 +838,7 @@ function stopRecord() {
 /* ═══════════════ NEW VIDEO ═══════════════ */
 function resetToUpload() {
   guide.close();
+  fx.clear(); armed = null; paintArmed();
   running = false;
   clearTimeout(rebuildTimer);
   if (mediaRecorder && mediaRecorder.state === 'recording') stopRecord();
@@ -771,7 +857,8 @@ function resetToUpload() {
 
 /* ═══════════════ GUIDE ═══════════════ */
 const guide = initGuide({
-  mouse, screenToWorld,
+  mouse, screenToWorld, fireAt,
+  resetField: () => { if (armed) setArmed(armed); fx.reform(); },
   running: () => running,
   isPaused: () => !!video && video.paused,
   togglePause: toggleVideoPause,

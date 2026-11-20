@@ -34,8 +34,9 @@ It is a renderer, not a filter. Not AI. Not a Gaussian splat tool. Not a physics
 1. Launch the app, or open [ciamac.com/pointfield](https://ciamac.com/pointfield) in a browser.
 2. Drop a video file onto the window, or click to choose one. Formats: MP4, WebM, MOV.
 3. The video plays as a live field of glowing points.
-4. Mouse: no button to swirl, left click to push, right click to attract.
-5. Keyboard: spacebar to pause, **R** to record, **Esc** to toggle the controls panel.
+4. Mouse: move to swirl, hold left to push, hold shift + left to pull in, right-click to explode.
+5. Actions (panel, under "actions"): arm implode, tornado, drain or orbit, then click the field (explode can be armed too). Fall, rise and reset are instant. Esc stops an armed tool.
+6. Keyboard: spacebar to pause, **R** to record, **Esc** to toggle the controls panel.
 
 ## System requirements
 

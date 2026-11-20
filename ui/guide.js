@@ -15,8 +15,16 @@ const STEPS = [
     hint: 'no button needed: the points swirl around the cursor' },
   { id: 'push',   demo: 'push',  say: 'hold the left button and sweep to push them away',
     hint: 'press and hold the left button, then drag across the field' },
-  { id: 'attract', demo: 'pull', say: 'hold the right button still and the points gather to it',
-    hint: 'press the right button on the field and keep it there for a second' },
+  { id: 'attract', demo: 'pull', keys: ['shift'], say: 'hold shift and the left button still and the points gather to it',
+    hint: 'hold shift, press the left button on the field and keep it there for a second' },
+  { id: 'explode', demo: 'blast', say: 'right-click the field for an explosion',
+    hint: 'click the right button anywhere on the points' },
+  { id: ['implode', 'tornado', 'drain', 'orbit'], say: 'arm a tool in the panel, then click the field',
+    hint: 'under actions pick implode, tornado, drain or orbit, then click the points' },
+  { id: ['fall', 'rise'], say: 'press fall or rise in the panel',
+    hint: 'fall and rise are instant: no click on the field' },
+  { id: 'reform', keepField: true, say: 'press reset to bring the points back',
+    hint: 'reset is the green button under actions' },
   { id: 'pause',  keys: ['space'], say: 'press space to pause the video',
     hint: 'space pauses and plays the clip under the points' },
   { id: 'panel',  keys: ['esc'],   say: 'press esc to hide the controls',
@@ -24,11 +32,13 @@ const STEPS = [
   { id: 'record', keys: ['R'],     say: 'press R to record the field',
     hint: 'R starts a recording, R again stops it and saves' },
 ];
+const NOTES = { explode: 'boom', implode: 'swallowed', tornado: 'a tornado', drain: 'it drains', orbit: 'an orbit',
+  fall: 'down it goes', rise: 'up it goes', reform: 'back in place' };
 
 export function initGuide(api) {
   let auto = true; try { auto = localStorage.getItem(OFF_KEY) !== '1'; } catch (e) {}
   let on = false, idx = 0, state = 'idle', t0 = 0, gen = 0, timer = 0, autoTried = false;
-  const ghost = { on: false, raf: 0 };
+  const ghost = { on: false, raf: 0, timer: 0 };
 
   /* ---------- DOM ---------- */
   const el = document.createElement('div');
@@ -72,27 +82,32 @@ export function initGuide(api) {
   function place(x, y, kind) {
     dot.style.transform = `translate(${x}px, ${y}px)`;
     const w = api.screenToWorld(x, y), m = api.mouse;
-    m.x = w.x; m.y = w.y; m.active = true; m.left = kind === 'push'; m.right = kind === 'pull';
+    m.x = w.x; m.y = w.y; m.active = true; m.left = kind === 'push'; m.pull = kind === 'pull';
   }
   function ghostStop() {
-    cancelAnimationFrame(ghost.raf);
-    if (ghost.on) { const m = api.mouse; m.left = m.right = m.active = false; }
+    cancelAnimationFrame(ghost.raf); clearTimeout(ghost.timer);
+    if (ghost.on) { const m = api.mouse; m.left = m.pull = m.active = false; }
     ghost.on = false; dot.hidden = true;
   }
   function ghostRun(kind) {
     ghostStop();
     if (REDUCE || !api.running()) return;
-    const W = fieldW(), H = innerHeight, start = performance.now(), dur = kind === 'pull' ? 2400 : 2600;
+    const W = fieldW(), H = innerHeight, start = performance.now();
+    const dur = kind === 'pull' ? 2400 : kind === 'blast' ? 1700 : 2600;
+    let fired = false;
     ghost.on = true; dot.hidden = false;
-    dot.className = kind === 'push' ? 'hold-l' : kind === 'pull' ? 'hold-r' : '';
+    dot.className = kind === 'push' || kind === 'pull' ? 'hold-l' : kind === 'blast' ? 'hold-r' : '';
     const frame = now => {
       if (!ghost.on) return;
       const t = Math.min(1, (now - start) / dur);
-      if (kind === 'pull') place(W * 0.5, H * 0.45, kind);
-      else place(W * (0.18 + 0.64 * t), H * (0.45 + 0.09 * Math.sin(t * Math.PI * 3)), kind);
+      if (kind === 'pull' || kind === 'blast') {
+        place(W * 0.5, H * 0.45, kind);
+        if (kind === 'blast' && !fired && now - start > 450) { fired = true; api.fireAt('explode', W * 0.5, H * 0.45); }   // the real explode
+      } else place(W * (0.18 + 0.64 * t), H * (0.45 + 0.09 * Math.sin(t * Math.PI * 3)), kind);
       if (t < 1) ghost.raf = requestAnimationFrame(frame); else ghostStop();
     };
     ghost.raf = requestAnimationFrame(frame);
+    ghost.timer = setTimeout(ghostStop, dur + 400);   // frames can stall (hidden window): the demo must still end and give the mouse back
   }
 
   /* ---------- steps ---------- */
@@ -100,6 +115,7 @@ export function initGuide(api) {
     if (api.isPaused()) api.togglePause();
     if (api.panelClosed()) api.togglePanel();
   }
+  function ids(st) { return [].concat(st.id); }
   function show() {
     const st = STEPS[idx];
     state = 'waiting'; t0 = performance.now();
@@ -121,7 +137,8 @@ export function initGuide(api) {
   }
   function advance() {
     restore(); idx++;
-    if (idx >= STEPS.length) finish(); else show();
+    // the field is put back before every step except reset, which needs something to reset
+    if (idx >= STEPS.length) finish(); else { if (!STEPS[idx].keepField) api.resetField(); show(); }
   }
   function finish() {
     state = 'finished'; ghostStop();
@@ -133,7 +150,7 @@ export function initGuide(api) {
   }
   function start() {
     if (!api.running()) return;
-    gen++; ghostStop(); restore();
+    gen++; ghostStop(); restore(); api.resetField();
     on = true; idx = 0; el.hidden = false; ui.close.hidden = false; paintAuto();
     show();
     clearInterval(timer);
@@ -147,6 +164,7 @@ export function initGuide(api) {
   }
   function close() {
     gen++; ghostStop(); restore(); clearInterval(timer);
+    if (on) api.resetField();
     on = false; state = 'idle'; el.hidden = true;
   }
 
@@ -160,20 +178,25 @@ export function initGuide(api) {
     const d = Math.hypot(e.clientX - lx, e.clientY - ly); lx = e.clientX; ly = e.clientY;
     if (!on || state !== 'waiting' || inUi(e.target) || !api.running()) return;
     if (waiting('swirl') && e.buttons === 0) { swirlPx += d; if (swirlPx >= SWIRL_PX) done('that is the swirl'); }
-    if (waiting('push') && (e.buttons & 1)) { pushPx += d; if (pushPx >= PUSH_PX) done('pushed'); }
+    if (waiting('push') && (e.buttons & 1) && !e.shiftKey) { pushPx += d; if (pushPx >= PUSH_PX) done('pushed'); }
     if (holdTimer && Math.hypot(e.clientX - holdX, e.clientY - holdY) > 60) { clearTimeout(holdTimer); holdTimer = 0; }
   }, true);
   addEventListener('mousedown', e => {
     if (ghost.on) { e.stopImmediatePropagation(); return; }
-    if (e.button === 2 && waiting('attract') && !inUi(e.target)) {
+    if (e.button === 0 && e.shiftKey && waiting('attract') && !inUi(e.target)) {
       holdX = e.clientX; holdY = e.clientY;
       holdTimer = setTimeout(() => { holdTimer = 0; if (waiting('attract')) done('they gather'); }, HOLD_MS);
     }
   }, true);
   addEventListener('mouseup', e => {
     if (ghost.on) { e.stopImmediatePropagation(); return; }
-    if (e.button === 2) { clearTimeout(holdTimer); holdTimer = 0; }
+    if (e.button === 0) { clearTimeout(holdTimer); holdTimer = 0; }
   }, true);
+  /* explode, the armed tools, fall, rise and reset: the app announces each real action */
+  addEventListener('pf-action', e => {
+    if (!on || state !== 'waiting' || ghost.on) return;
+    if (ids(STEPS[idx]).includes(e.detail)) done(NOTES[e.detail] || 'nice');
+  });
   addEventListener('keydown', e => {
     if (!on || state !== 'waiting' || e.repeat || !api.running() || e.metaKey || e.ctrlKey) return;
     if (e.key === ' ' && waiting('pause')) done('the clip pauses; it plays again in a moment');
@@ -185,7 +208,7 @@ export function initGuide(api) {
   const tap = (btn, fn) => btn.addEventListener('click', e => { e.stopPropagation(); btn.blur(); fn(); });
   tap(ui.close, close);
   tap(ui.pri, () => { if (state === 'finished') close(); });
-  tap(ui.again, () => { const st = STEPS[idx]; ui.hint.textContent = st.hint; t0 = performance.now(); resetProgress(); ghostRun(st.demo); });
+  tap(ui.again, () => { const st = STEPS[idx]; ui.hint.textContent = st.hint; t0 = performance.now(); resetProgress(); api.resetField(); ghostRun(st.demo); });
   tap(ui.skip, () => { gen++; ghostStop(); state = 'done'; advance(); });
   tap(ui.auto, () => setAuto(!auto));
   paintAuto();

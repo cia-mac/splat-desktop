@@ -346,3 +346,23 @@ canvas { display: block; position: fixed; inset: 0; z-index: 1; }
 #pf-guide-dot svg { position: absolute; left: 12px; top: 10px; filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.6)); }
 #pf-guide-dot svg path { fill: transparent; }
 #pf-guide-dot.hold-l svg .l, #pf-guide-dot.hold-r svg .r { fill: #fff; }
+
+/* ── Actions grid in the panel ── */
+#fx-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+#fx-grid button {
+  display: flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 0; cursor: pointer;
+  font: 400 12px/1 -apple-system, BlinkMacSystemFont, sans-serif; letter-spacing: 0.3px;
+  color: var(--text-secondary); background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; transition: all 0.2s;
+}
+#fx-grid button svg { width: 14px; height: 14px; flex: none; opacity: 0.85; }
+#fx-grid button:hover { color: var(--text-primary); border-color: rgba(255, 255, 255, 0.18); }
+#fx-grid button.armed {
+  color: #fff; border-color: rgba(var(--accent), 0.9); background: rgba(var(--accent), 0.18);
+  box-shadow: 0 0 12px rgba(var(--accent), 0.45);
+}
+#fx-grid button.fx-reset { color: rgba(126, 231, 135, 0.95); border-color: rgba(63, 185, 80, 0.5); background: rgba(63, 185, 80, 0.12); }
+#fx-status { margin-top: 10px; font-size: 12px; line-height: 1.45; color: var(--text-dim); }
+body.pf-armed { cursor: crosshair; }
+body.pf-armed #controls, body.pf-armed #controls *, body.pf-armed #pf-guide, body.pf-armed #pf-guide * { cursor: auto; }
+body.pf-armed #controls button, body.pf-armed #pf-guide button { cursor: pointer; }
