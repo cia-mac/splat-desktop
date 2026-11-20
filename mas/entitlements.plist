@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Exactly the entitlements of the live Mac App Store build (0.1.4, build 6), read from /Applications/Pointfield.app on 2026-11-19. -->
+	<key>com.apple.application-identifier</key>
+	<string>3AUT8DTWP3.com.ciamac.ciafx</string>
+	<key>com.apple.developer.team-identifier</key>
+	<string>3AUT8DTWP3</string>
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<!-- open a video and save a recording through the system panels -->
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+	<!-- Tauri's webview renders blank under the sandbox without this (D-0278). Do not strip it. -->
+	<key>com.apple.security.network.client</key>
+	<true/>
+</dict>
+</plist>

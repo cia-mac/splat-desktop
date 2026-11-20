@@ -1,3 +1,5 @@
 target/
 node_modules/
 .DS_Store
+mas/out/
+mas/*.provisionprofile
