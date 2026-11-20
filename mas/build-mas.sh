@@ -73,6 +73,8 @@ PY
 
 echo "== 4/5 sign the app with the profile embedded"
 cp "$PROFILE" "$APP/Contents/embedded.provisionprofile"
+xattr -cr "$APP"   # the profile comes from a browser download and carries com.apple.quarantine, which App Store Connect rejects (91109)
+! xattr -lr "$APP" | grep -q com.apple.quarantine || { echo "quarantine attribute still on the app"; exit 1; }
 codesign --force --timestamp --sign "$APP_ID" --entitlements "$ENT" "$APP"
 codesign --verify --deep --strict --verbose=2 "$APP"
 codesign -d --entitlements - "$APP" 2>&1 | grep -E 'application-identifier|app-sandbox|network.client|user-selected' | sed 's/^/   /'
