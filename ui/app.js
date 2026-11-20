@@ -1,4 +1,5 @@
 import * as THREE from './vendor/three.module.js';
+import { initGuide } from './guide.js';
 
 /* ═══════════════ TAURI API ═══════════════ */
 const isTauri = !!window.__TAURI_INTERNALS__;
@@ -168,7 +169,9 @@ fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.
 /* Bundled sample (the ciamac bird, same clip as the homepage and the iPhone app).
    Read into a blob so it takes the exact path a dropped file takes; a direct
    src on the app's own scheme is not relied on for video in the webview. */
+const SAMPLE_BRIGHTNESS = 1.0;   // the bird is mostly white shirt and sky; the 2.4 default blows it out
 function loadSample() {
+  BRIGHTNESS = SAMPLE_BRIGHTNESS;   // initApp builds the uniform and the slider from this
   fetch('sample.mp4')
     .then(r => { if (!r.ok) throw new Error(r.status); return r.blob(); })
     .then(b => handleFile(new File([b], 'Pointfield.mp4', { type: 'video/mp4' })))
@@ -276,6 +279,7 @@ function initApp(v, name) {
   buildControls();
   running = true;
   tick();
+  guide.onVideoRunning();
 }
 
 /* ═══════════════ CAMERA ═══════════════ */
@@ -598,6 +602,9 @@ function buildControls() {
     const loopLbl = document.createElement('label'); loopLbl.htmlFor = 'full-loop'; loopLbl.textContent = 'Record full loop';
     loopRow.append(loopCb, loopLbl); recSec.appendChild(loopRow); body.appendChild(recSec);
 
+    const guideBtn = document.createElement('button'); guideBtn.id = 'guide-btn'; guideBtn.textContent = 'Guide';
+    guideBtn.addEventListener('click', () => { guideBtn.blur(); guide.start(); }); body.appendChild(guideBtn);
+
     const newBtn = document.createElement('button'); newBtn.id = 'new-video'; newBtn.textContent = 'New video';
     newBtn.addEventListener('click', resetToUpload); body.appendChild(newBtn);
   }
@@ -745,6 +752,7 @@ function stopRecord() {
 
 /* ═══════════════ NEW VIDEO ═══════════════ */
 function resetToUpload() {
+  guide.close();
   running = false;
   clearTimeout(rebuildTimer);
   if (mediaRecorder && mediaRecorder.state === 'recording') stopRecord();
@@ -760,6 +768,16 @@ function resetToUpload() {
   buildControls();
   fileInput.value = '';
 }
+
+/* ═══════════════ GUIDE ═══════════════ */
+const guide = initGuide({
+  mouse, screenToWorld,
+  running: () => running,
+  isPaused: () => !!video && video.paused,
+  togglePause: toggleVideoPause,
+  panelClosed: () => ctrlPanel.classList.contains('closed'),
+  togglePanel,
+});
 
 /* ═══════════════ INIT CONTROLS ON LOAD ═══════════════ */
 buildControls();

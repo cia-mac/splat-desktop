@@ -255,8 +255,11 @@ canvas { display: block; position: fixed; inset: 0; z-index: 1; }
 }
 #full-loop-row input { accent-color: rgb(var(--accent)); }
 
+/* Guide button sits above New video; same look */
+#guide-btn { margin-top: 12px; }
+
 /* New video */
-#new-video {
+#new-video, #guide-btn {
   margin-top: 16px; width: 100%; padding: 10px 0;
   font: 400 12px/1 -apple-system, BlinkMacSystemFont, sans-serif;
   letter-spacing: 0.5px;
@@ -265,7 +268,7 @@ canvas { display: block; position: fixed; inset: 0; z-index: 1; }
   border-radius: 6px; color: var(--text-dim);
   cursor: pointer; transition: all 0.2s;
 }
-#new-video:hover {
+#new-video:hover, #guide-btn:hover {
   border-color: rgba(255, 255, 255, 0.1);
   color: var(--text-secondary);
 }
@@ -288,3 +291,58 @@ canvas { display: block; position: fixed; inset: 0; z-index: 1; }
   transition: opacity 0.3s;
 }
 #controls.closed ~ #kb-hint { right: 18px; }
+
+/* ── Guide: step card over the live field, ghost cursor ── */
+#pf-guide {
+  position: fixed; left: 24px; bottom: 52px; z-index: 45;
+  width: min(400px, calc(100vw - 420px)); min-width: 300px;
+  padding: 16px 18px 14px; border-radius: 14px;
+  background: var(--panel-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4); backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.45);
+}
+#pf-guide[hidden], #pf-guide-dot[hidden], #pf-guide [hidden] { display: none; }
+#pf-guide .prog {
+  display: flex; justify-content: space-between; align-items: center;
+  font: 11px/1 'SF Mono', 'Menlo', monospace; letter-spacing: 1.5px; text-transform: uppercase;
+  color: rgba(var(--accent), 0.8);
+}
+#pf-guide .close, #pf-guide .auto {
+  background: none; border: 0; cursor: pointer; font-family: inherit; color: var(--text-secondary);
+}
+#pf-guide .close {
+  padding: 4px 10px; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px;
+  font: 11px/1 'SF Mono', 'Menlo', monospace; letter-spacing: 1.5px; text-transform: uppercase;
+}
+#pf-guide .close:hover, #pf-guide .auto:hover { color: var(--text-primary); }
+#pf-guide .say { margin: 12px 0 4px; font: 500 19px/1.3 -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif; color: #fff; }
+#pf-guide .say .ok { color: #7ee787; margin-right: 4px; }
+#pf-guide .caps { display: flex; gap: 8px; margin: 10px 0 2px; }
+#pf-guide .caps:empty { display: none; }
+#pf-guide kbd {
+  min-width: 44px; padding: 8px 14px; text-align: center; border-radius: 8px;
+  font: 600 13px/1 'SF Mono', 'Menlo', monospace; letter-spacing: 1px; color: #fff;
+  background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.25);
+  box-shadow: 0 2px 0 rgba(255, 255, 255, 0.12);
+}
+#pf-guide .hint { min-height: 17px; margin-top: 4px; font-size: 13px; color: rgba(var(--accent), 0.95); }
+#pf-guide .row { display: flex; gap: 8px; margin-top: 12px; }
+#pf-guide .row button {
+  flex: 1; padding: 10px 0; border-radius: 8px; cursor: pointer;
+  font: 600 11px/1 'SF Mono', 'Menlo', monospace; letter-spacing: 1.2px; text-transform: uppercase;
+}
+#pf-guide .pri { color: #0b1020; background: rgba(255, 255, 255, 0.92); border: 1px solid #fff; }
+#pf-guide .sec { color: #fff; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.25); }
+#pf-guide .sec:hover { background: rgba(255, 255, 255, 0.14); }
+#pf-guide .auto { display: block; margin-top: 12px; padding: 0; font-size: 12px; text-align: left; }
+
+#pf-guide-dot { position: fixed; left: 0; top: 0; z-index: 44; pointer-events: none; will-change: transform; }
+#pf-guide-dot i {
+  position: absolute; left: -15px; top: -15px; width: 30px; height: 30px; border-radius: 50%;
+  background: radial-gradient(circle at 50% 42%, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.07) 70%);
+  border: 1.5px solid rgba(255, 255, 255, 0.85); box-shadow: 0 0 16px rgba(143, 178, 245, 0.7);
+}
+#pf-guide-dot svg { position: absolute; left: 12px; top: 10px; filter: drop-shadow(0 1px 4px rgba(0, 0, 0, 0.6)); }
+#pf-guide-dot svg path { fill: transparent; }
+#pf-guide-dot.hold-l svg .l, #pf-guide-dot.hold-r svg .r { fill: #fff; }
