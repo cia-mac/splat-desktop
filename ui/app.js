@@ -486,6 +486,7 @@ function updateMouseOffsets(dt) {
   if (fxKick) fx.kickStep(dt);   // coasting after a throw: one tight loop, then the wake return in the loop below
   const um = fieldScale(), R = MOUSE_RADIUS * um * (mouse.pull ? PULL_R_RATIO : 1);
   const stir = Math.min(1, Math.hypot(mouse.vx, mouse.vy) / (TOUCH_STIR_V * um));
+  const wakeFar = WAKE_THRESHOLD * um;   // 'far from home' (slow return) is a share of the window, not a fixed 3 units
 
   for (let i = 0; i < N; i++) {
     // Mouse interaction
@@ -521,7 +522,7 @@ function updateMouseOffsets(dt) {
     // Wake return (decay offset back to zero)
     const disp = Math.sqrt(mOffX[i] * mOffX[i] + mOffY[i] * mOffY[i]);
     if (!fxOn && !fxReform && disp > 0.01) {
-      const decay = Math.exp(-(disp > WAKE_THRESHOLD ? WAKE_RETURN : RETURN_SPEED) * dt);
+      const decay = Math.exp(-(disp > wakeFar ? WAKE_RETURN : RETURN_SPEED) * dt);
       mOffX[i] *= decay; mOffY[i] *= decay;
       dirty = true;
     }
@@ -917,6 +918,7 @@ const guide = initGuide({
 /* ═══════════════ INIT CONTROLS ON LOAD ═══════════════ */
 buildControls();
 loadSample(); // open on the bird, like the homepage; dropping a video replaces it
+
 
 
 
