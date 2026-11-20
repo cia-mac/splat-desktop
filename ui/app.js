@@ -141,6 +141,7 @@ function visibleSize() {
 }
 function resizeRenderSurface() {
   if (!running || !renderer) return;
+  resetPointer();   // the screen-to-world mapping changes: old pointer samples are in the old coordinates
   const sz = visibleSize();
   renderer.setSize(sz.width, sz.height);
   makeCamera();
@@ -216,6 +217,7 @@ function handleFile(file) {
 /* ═══════════════ INIT APP ═══════════════ */
 function initApp(v, name) {
   vidW = v.videoWidth; vidH = v.videoHeight; videoName = name;
+  resetPointer();
 
   // Cancel the previous frame loop before starting a new one. Without this,
   // every video loaded while one is running leaves its own tick() chain alive
@@ -382,6 +384,15 @@ const FLICK_V = 1467, FLICK_GAP_MS = 350;   // a stroke faster than this (the iP
    queues mouse events that then arrive back to back, and a per-event speed would read them as a huge jump. */
 const SPEED_WIN_MS = 80, SPEED_MIN_SPAN_MS = 16, SPEED_CAP = FLICK_V * 4;
 let lastFlick = 0;
+/* The throw fires when a fast stroke ENDS, at the pointer, with the stroke's fastest velocity: the iPhone throws at finger
+   release, so the points thrown are the ones where the pointer finished, not where it began. */
+const stroke = { sp: 0, vx: 0, vy: 0 };
+const PULL_R_RATIO = 260 / 180;   // the iPhone's hold-pull reaches 260 units against its 180-unit stir radius
+function resetPointer() { mouse.active = false; mouse.vx = 0; mouse.vy = 0; mouse.t = 0; mouse.hist.length = 0; stroke.sp = 0; }
+function endStroke(now) {
+  if (stroke.sp > 0 && now - lastFlick > FLICK_GAP_MS && !fx.effect) { lastFlick = now; fx.flick(mouse.x, mouse.y, stroke.vx, stroke.vy); }   // never into a running effect
+  stroke.sp = 0;
+}
 const fieldScale = () => Math.min(vidW, vidH) / 500;
 
 /* ═══════════════ ACTIONS (explode, implode, tornado, drain, orbit, fall, rise, reset) ═══════════════ */
@@ -424,6 +435,7 @@ function screenToWorld(sx, sy) {
 
 addEventListener('mousemove', e => {
   if (!running) return;
+  if (!(e.buttons & 1)) { mouse.left = false; mouse.pull = false; }   // a release outside the window sends no mouseup: do not stay latched
   const w = screenToWorld(e.clientX, e.clientY), now = e.timeStamp, um = fieldScale();
   if (!mouse.active) mouse.hist.length = 0;   // a fresh entry: no stale samples
   mouse.hist.push({ t: now, x: w.x, y: w.y });
@@ -435,11 +447,14 @@ addEventListener('mousemove', e => {
     mouse.vx += (vx - mouse.vx) * 0.5; mouse.vy += (vy - mouse.vy) * 0.5;
   }
   mouse.t = now; mouse.x = w.x; mouse.y = w.y; mouse.active = true;
-  if (!mouse.left && !mouse.pull && !armed && now - lastFlick > FLICK_GAP_MS && Math.hypot(mouse.vx, mouse.vy) > FLICK_V * um) {
-    lastFlick = now; fx.flick(mouse.x, mouse.y, mouse.vx, mouse.vy);   // the iPhone's fast-swipe throw
-  }
+  if (!mouse.left && !mouse.pull && !armed) {
+    const sp = Math.hypot(mouse.vx, mouse.vy);
+    if (sp > FLICK_V * um && sp > stroke.sp) { stroke.sp = sp; stroke.vx = mouse.vx; stroke.vy = mouse.vy; }   // the fastest moment so far
+    else if (stroke.sp > 0 && sp < stroke.sp * 0.5) endStroke(now);                                            // it has slowed to half: the stroke is over
+  } else stroke.sp = 0;
 });
-addEventListener('mouseleave', () => { mouse.active = false; mouse.vx = 0; mouse.vy = 0; mouse.t = 0; mouse.hist.length = 0; });
+addEventListener('mouseleave', resetPointer);
+addEventListener('blur', () => { mouse.left = false; mouse.pull = false; resetPointer(); });
 /* Mouse (D-0827, D-0831): left-hold pushes, shift + left-hold pulls in, a right click explodes at the pointer with no
    arming, and with a tool armed a left click fires it there instead. */
 addEventListener('mousedown', e => {
@@ -465,9 +480,10 @@ function updateMouseOffsets(dt) {
   if (fxOn || fxKick || fxReform) dirty = true;
 
   // the pointer's velocity fades when it stops moving; everything is scaled to the window like the iPhone's
+  if (stroke.sp > 0 && performance.now() - mouse.t > 60) endStroke(performance.now());
   if (performance.now() - mouse.t > 60) { const k = Math.exp(-dt * 12); mouse.vx *= k; mouse.vy *= k; }
   if (fxKick) fx.kickStep(dt);   // coasting after a throw: one tight loop, then the wake return in the loop below
-  const um = fieldScale(), R = MOUSE_RADIUS * um;
+  const um = fieldScale(), R = MOUSE_RADIUS * um * (mouse.pull ? PULL_R_RATIO : 1);
   const stir = Math.min(1, Math.hypot(mouse.vx, mouse.vy) / (TOUCH_STIR_V * um));
 
   for (let i = 0; i < N; i++) {
@@ -900,5 +916,6 @@ const guide = initGuide({
 /* ═══════════════ INIT CONTROLS ON LOAD ═══════════════ */
 buildControls();
 loadSample(); // open on the bird, like the homepage; dropping a video replaces it
+
 
 
