@@ -165,6 +165,20 @@ document.body.addEventListener('drop', e => {
 });
 fileInput.addEventListener('change', e => { if (e.target.files[0]) handleFile(e.target.files[0]); });
 
+/* Bundled sample (the ciamac bird, same clip as the homepage and the iPhone app).
+   Read into a blob so it takes the exact path a dropped file takes; a direct
+   src on the app's own scheme is not relied on for video in the webview. */
+function loadSample() {
+  fetch('sample.mp4')
+    .then(r => { if (!r.ok) throw new Error(r.status); return r.blob(); })
+    .then(b => handleFile(new File([b], 'Pointfield.mp4', { type: 'video/mp4' })))
+    .catch(() => {}); // no sample: the drop screen stays, as before
+}
+document.getElementById('sample-btn').addEventListener('click', e => {
+  e.stopPropagation(); // the card itself opens the file picker
+  loadSample();
+});
+
 function handleFile(file) {
   if (!file.type.startsWith('video/')) { alert('Not a video file'); return; }
   if (file.size > 500 * 1024 * 1024) {
@@ -749,3 +763,4 @@ function resetToUpload() {
 
 /* ═══════════════ INIT CONTROLS ON LOAD ═══════════════ */
 buildControls();
+loadSample(); // open on the bird, like the homepage; dropping a video replaces it

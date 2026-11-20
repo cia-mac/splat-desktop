@@ -81,6 +81,13 @@ canvas { display: block; position: fixed; inset: 0; z-index: 1; }
 .upload-hint {
   font-size: 13px; color: var(--text-dim); letter-spacing: 0.3px;
 }
+.upload-sample {
+  margin-top: 18px; padding: 0; border: 0; background: none; cursor: pointer;
+  font: 400 12px/1.4 -apple-system, BlinkMacSystemFont, sans-serif;
+  letter-spacing: 0.3px; color: rgba(var(--accent), 0.7);
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.upload-sample:hover { color: rgba(var(--accent), 1); }
 #file-input { display: none; }
 
 /* ── Controls panel ── */
